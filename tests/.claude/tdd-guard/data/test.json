@@ -1,0 +1,39 @@
+{
+  "testModules": [
+    {
+      "moduleId": "tests/unit/test_task_model.py",
+      "tests": [
+        {
+          "name": "test_create_task_success_minimal_data",
+          "fullName": "tests/unit/test_task_model.py::TestTaskCreate::test_create_task_success_minimal_data",
+          "state": "passed"
+        },
+        {
+          "name": "test_validate_success_minimal_valid_data",
+          "fullName": "tests/unit/test_task_model.py::TestTaskValidate::test_validate_success_minimal_valid_data",
+          "state": "passed"
+        },
+        {
+          "name": "test_validate_missing_title",
+          "fullName": "tests/unit/test_task_model.py::TestTaskValidate::test_validate_missing_title",
+          "state": "passed"
+        },
+        {
+          "name": "test_validate_invalid_status",
+          "fullName": "tests/unit/test_task_model.py::TestTaskValidate::test_validate_invalid_status",
+          "state": "passed"
+        },
+        {
+          "name": "test_serialize_complete_task_success",
+          "fullName": "tests/unit/test_task_model.py::TestTaskSerialize::test_serialize_complete_task_success",
+          "state": "passed"
+        },
+        {
+          "name": "test_update_fields_success_all_allowed",
+          "fullName": "tests/unit/test_task_model.py::TestTaskUpdateFields::test_update_fields_success_all_allowed",
+          "state": "passed"
+        }
+      ]
+    }
+  ]
+}

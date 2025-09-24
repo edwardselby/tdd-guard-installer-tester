@@ -1,0 +1,117 @@
+# Coverage Configuration for Comprehensive Testing
+
+[run]
+# Source code to measure
+source = app
+
+# Files to include in coverage
+include =
+    app/*
+    app/**/*
+
+# Files to exclude from coverage
+omit =
+    # Test files
+    tests/*
+    tests/**/*
+
+    # Virtual environment
+    .venv/*
+    venv/*
+
+    # System files
+    */site-packages/*
+    */.local/*
+
+    # Build/deployment files
+    build/*
+    dist/*
+    *.egg-info/*
+
+    # Configuration files that don't need coverage
+    app/config.py
+
+    # Entry points that are hard to test
+    run.py
+
+# Branch coverage (more thorough)
+branch = True
+
+# Measure coverage of sub-processes
+concurrency = thread,multiprocessing
+
+# Coverage plugins
+plugins =
+
+[report]
+# Precision for coverage percentages
+precision = 2
+
+# Skip covered files in report
+skip_covered = False
+
+# Skip empty files
+skip_empty = True
+
+# Show missing lines
+show_missing = True
+
+# Sort by coverage percentage
+sort = Cover
+
+# Exclude lines from coverage
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code
+    def __repr__
+    if self\.debug
+
+    # Don't complain if tests don't hit defensive assertion code
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run
+    if 0:
+    if False:
+    if __name__ == .__main__.:
+
+    # Don't complain about abstract methods
+    @(abc\.)?abstractmethod
+
+    # Don't complain about type checking imports
+    if TYPE_CHECKING:
+
+    # Don't complain about pass statements
+    pass
+
+# Partial coverage for branches
+partial_branches =
+    # Don't complain about missing coverage on the else of if statements
+    pragma: no branch
+
+# Coverage requirements (matches pytest.ini)
+fail_under = 80
+
+[html]
+# HTML report directory
+directory = htmlcov
+
+# HTML report title
+title = TDD Guard Test - Coverage Report
+
+# Skip files with 100% coverage in HTML report
+skip_covered = False
+
+# Skip empty files in HTML report
+skip_empty = True
+
+[xml]
+# XML report output
+output = coverage.xml
+
+[json]
+# JSON report output
+output = coverage.json
+pretty_print = True
