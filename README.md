@@ -2,13 +2,29 @@
 
 A dedicated repository for testing and validating the [TDD Guard](https://github.com/nizos/tdd-guard) system using various AI models and instruction configurations.
 
+## 🎯 Repository Understanding
+
+**TDD Guard** is a Claude Code hook that intercepts AI agent actions and blocks them if they violate Test-Driven Development principles. This repository:
+
+1. **Contains TDD Guard Instructions** - Both legacy (`INSTRUCTIONS_V1.md`) and modular system (`modules/`, `generated/`)
+2. **Tests the Hook's Effectiveness** - Validates that TDD Guard correctly blocks/allows AI agent actions
+3. **Improves Instruction Quality** - Iteratively enhances TDD Guard rules based on testing results
+
+**Key Workflow:**
+- AI agents (like Claude) attempt to create/modify code
+- TDD Guard hook intercepts these actions
+- Hook evaluates actions against `INSTRUCTIONS_V1.md` rules
+- Hook blocks violations or allows valid TDD practices
+- This repository tests and refines this blocking behavior
+
 ## 🎯 Purpose
 
 This repository is designed to:
-- Test TDD Guard's ability to enforce Test-Driven Development principles
+- Test TDD Guard's ability to enforce Test-Driven Development principles on AI agents
 - Validate instruction effectiveness across different AI model capabilities
 - Ensure TDD Guard understands TDD concepts rather than just pattern matching
 - Provide a controlled environment for TDD Guard development and improvement
+- **NEW**: Enforce pytest patterns and best practices through TDD Guard instructions
 
 ## 🚀 Quick Start with Claude Code
 
@@ -46,7 +62,7 @@ This repository is designed to:
 
 ### Running Test Scenarios
 
-The repository includes comprehensive test scenarios in `INSTRUCTIONS_V1_TESTING.md`. These tests validate:
+The repository includes comprehensive test scenarios in both `INSTRUCTIONS_V1_TESTING.md` (legacy) and `generated/TESTING_GENERATED.md` (modular). These tests validate:
 
 - **Fake Implementation Detection**: Hardcoded returns, test-specific logic
 - **Test Duplication Prevention**: Various forms of duplicate test files
@@ -134,12 +150,24 @@ tdd-guard-testing/
 │   └── tdd-guard/
 │       └── data/
 │           └── instructions.md # Enhanced TDD Guard rules
+├── modules/                    # Modular instruction system
+│   ├── core/                   # Core TDD workflow rules
+│   ├── pytest/                 # Pytest-specific enforcement
+│   ├── test-duplication/       # Duplicate test prevention
+│   ├── fake-implementation/    # Fake code detection
+│   └── ...                     # 9 modules total
+├── generated/                  # Generated combined instructions
+│   ├── INSTRUCTIONS_GENERATED.md # Combined modular instructions (256 lines)
+│   └── TESTING_GENERATED.md   # Combined test scenarios (723 lines)
+├── tools/
+│   ├── generate.py            # CLI tool to combine modules programmatically
+│   └── validate.py            # Module validation and completeness check
 ├── tests/
 │   └── unit/
 │       └── test_task_model.py  # Original test file
 ├── app/                        # Sample Flask application
-├── INSTRUCTIONS_V1.md          # TDD Guard instruction reference
-├── INSTRUCTIONS_V1_TESTING.md # Test scenario documentation
+├── INSTRUCTIONS_V1.md          # Legacy monolithic instructions (211 lines)
+├── INSTRUCTIONS_V1_TESTING.md # Legacy test scenarios
 └── README.md                   # This file
 ```
 
@@ -155,10 +183,25 @@ Create your own test scenarios by:
 
 ### Instruction Development
 
-The enhanced instructions in `.claude/tdd-guard/data/instructions.md` have been tested and validated to:
-- Achieve 100% success rate on comprehensive test scenarios
-- Work effectively with less capable AI models
-- Focus on TDD principles rather than pattern matching
+The repository supports both legacy monolithic and modern modular instruction systems:
+
+#### Modular System (`modules/` + `tools/generate.py`):
+- **9 specialized modules** covering different TDD violation types
+- **Programmatic generation** via CLI tool for deterministic output
+- **256-line compact instructions** (vs 211 lines legacy) with 46% more coverage
+- **Priority-based combination** ensuring critical checks happen first
+
+#### Usage Examples:
+```bash
+# Generate all modules (full feature set)
+python tools/generate.py --all
+
+# Generate custom combinations
+python tools/generate.py core pytest test-duplication
+
+# List available modules
+python tools/generate.py --list
+```
 
 ## 📈 Results and Metrics
 
