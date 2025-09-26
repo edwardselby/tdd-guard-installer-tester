@@ -1,9 +1,40 @@
 # Changelog
 
-All notable changes to the TDD Guard Configuration Wizard project will be documented in this file.
+All notable changes to the TDD Guard Multi-Project Installer project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.0.0] - 2024-09-26
+
+### Major: Multi-Project Installation Support
+- **🎯 Multi-Project Discovery**: Auto-discover and select from compatible Python projects in workspace
+- **📦 Automatic Package Installation**: Install `tdd-guard-pytest` directly in target project's virtual environment
+- **🔍 Project Type Detection**: Automatically identify Flask, FastAPI, Django, and general Python projects
+- **🌐 Cross-Project Configuration**: Deploy TDD Guard configuration to any target project
+- **📋 Enhanced Project Selection**: Interactive project browser with virtual environment detection
+- **⚙️ Haiku JSON Fix Module**: Auto-include JSON formatting fixes for Claude 3.5 Haiku model
+- **🏗️ Installation Workflow**: Complete end-to-end installation from discovery to deployment
+
+### Enhanced Multi-Project Features
+- **Project Validation**: Comprehensive project compatibility checking
+- **Virtual Environment Detection**: Support for .venv, venv, env, virtualenv structures
+- **Target Path Persistence**: Save and restore target project selections
+- **Installation Summary**: Detailed post-installation status and next steps
+- **Cross-Project Isolation**: Each project maintains independent TDD Guard configuration
+
+### Updated Documentation
+- **README.md**: Complete rewrite for multi-project installer workflow
+- **Usage Examples**: Project selection interface and installation flow
+- **Troubleshooting Guide**: Multi-project installation issues and solutions
+- **Project Compatibility**: Supported project types and requirements matrix
+- **Directory Structure**: Installer vs target project file organization
+
+### Files Enhanced for Multi-Project Support
+- `install.py` - Complete multi-project installation workflow (Lines 84-376)
+- `generated/.last-config.json` - Target project path persistence
+- Target project `.claude/` - Cross-project Claude IDE integration
+- `README.md` - Multi-project installer documentation
 
 ## [2.0.0] - 2024-01-XX
 
@@ -39,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/CHANGELOG.md` - Project change documentation
 
 ### Files Enhanced
-- `tools/generate.py` - Complete rewrite with Claude IDE integration
+- `install.py` - Complete rewrite with Claude IDE integration
 - `generated/.last-config.json` - Extended configuration persistence
 - `.claude/settings.local.json` - TDD Guard hooks and enforcement
 - `README.md` - Updated with comprehensive usage documentation
