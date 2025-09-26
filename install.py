@@ -806,29 +806,7 @@ def run_wizard(modules: List[ModuleInfo]) -> Tuple[List[str], bool, int, Dict]:
             estimated_lines = sum(m.line_count for m in modules if m.name in selected_module_names)
             return selected_module_names, generate_tests, estimated_lines, loaded_ide_config
 
-    print("Module Selection (ordered by priority):")
-    print("-" * 40)
-
-    for module in modules:
-        # Display module info
-        status_char = "*" if module.default_enabled else " "
-        print(f"[{status_char}] {module.display_name} (+{module.line_count} lines)")
-        print(f"    {module.description}")
-
-        # Ask for selection
-        if ask_yes_no("Include this module?", module.default_enabled):
-            selected_modules.append(module.name)
-            total_lines += module.line_count
-            print(f"    Selected (Running total: {total_lines}/300 lines)")
-
-            # Warn if approaching limit
-            if total_lines > 300:
-                print(f"    WARNING: Exceeds 300-line limit! Current: {total_lines} lines")
-        else:
-            print(f"    Skipped (Running total: {total_lines}/300 lines)")
-        print()
-
-    # Model Selection
+    # REORDERED: Model Selection FIRST (before modules)
     print("Model Selection:")
     print("-" * 40)
     models = load_models()
@@ -854,18 +832,49 @@ def run_wizard(modules: List[ModuleInfo]) -> Tuple[List[str], bool, int, Dict]:
 
     ide_config['model_id'] = selected_model['id']
     print(f"Selected: {selected_model['name']}")
+    print()
 
-    # Auto-include model-specific modules
+    # Auto-include model-specific modules BEFORE showing module selection
+    model_specific_modules = []
     for module in modules:
-        if (module.auto_include_with_model == selected_model['id'] and
-            module.name not in selected_modules):
+        if (module.auto_include_with_model == selected_model['id']):
+            model_specific_modules.append(module.name)
             selected_modules.append(module.name)
             total_lines += module.line_count
             if module.mandatory_for_model:
-                print(f"✓ Auto-included mandatory module: {module.display_name} (+{module.line_count} lines)")
+                print(f"✓ Auto-including mandatory module for {selected_model['name']}: {module.display_name}")
             else:
-                print(f"✓ Auto-included recommended module: {module.display_name} (+{module.line_count} lines)")
-    print()
+                print(f"✓ Auto-including recommended module for {selected_model['name']}: {module.display_name}")
+
+    if model_specific_modules:
+        print()
+
+    # Module Selection (now AFTER model selection)
+    print("Module Selection (ordered by priority):")
+    print("-" * 40)
+
+    for module in modules:
+        # Skip modules that were auto-included for the selected model
+        if module.name in model_specific_modules:
+            continue
+
+        # Display module info
+        status_char = "*" if module.default_enabled else " "
+        print(f"[{status_char}] {module.display_name} (+{module.line_count} lines)")
+        print(f"    {module.description}")
+
+        # Ask for selection
+        if ask_yes_no("Include this module?", module.default_enabled):
+            selected_modules.append(module.name)
+            total_lines += module.line_count
+            print(f"    Selected (Running total: {total_lines}/300 lines)")
+
+            # Warn if approaching limit
+            if total_lines > 300:
+                print(f"    WARNING: Exceeds 300-line limit! Current: {total_lines} lines")
+        else:
+            print(f"    Skipped (Running total: {total_lines}/300 lines)")
+        print()
 
     # Claude IDE Integration
     print("Claude IDE Integration:")
