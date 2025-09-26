@@ -1,0 +1,12 @@
+{
+  "selected_modules": [
+    "haiku-json-fix"
+  ],
+  "generate_tests": true,
+  "model_id": null,
+  "enable_hooks": false,
+  "copy_instructions": false,
+  "configure_ignore_patterns": false,
+  "protect_guard_settings": true,
+  "block_file_bypass": false
+}

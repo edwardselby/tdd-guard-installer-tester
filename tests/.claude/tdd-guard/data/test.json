@@ -1,36 +1,71 @@
 {
   "testModules": [
     {
-      "moduleId": "tests/unit/test_task_model.py",
+      "moduleId": "test_install.py",
       "tests": [
         {
-          "name": "test_create_task_success_minimal_data",
-          "fullName": "tests/unit/test_task_model.py::TestTaskCreate::test_create_task_success_minimal_data",
+          "name": "test_module_info_loads_metadata_correctly",
+          "fullName": "test_install.py::test_module_info_loads_metadata_correctly",
           "state": "passed"
         },
         {
-          "name": "test_validate_success_minimal_valid_data",
-          "fullName": "tests/unit/test_task_model.py::TestTaskValidate::test_validate_success_minimal_valid_data",
+          "name": "test_discover_modules_finds_valid_modules",
+          "fullName": "test_install.py::test_discover_modules_finds_valid_modules",
           "state": "passed"
         },
         {
-          "name": "test_validate_missing_title",
-          "fullName": "tests/unit/test_task_model.py::TestTaskValidate::test_validate_missing_title",
+          "name": "test_load_models_returns_default_when_file_missing",
+          "fullName": "test_install.py::test_load_models_returns_default_when_file_missing",
           "state": "passed"
         },
         {
-          "name": "test_validate_invalid_status",
-          "fullName": "tests/unit/test_task_model.py::TestTaskValidate::test_validate_invalid_status",
+          "name": "test_load_last_config_returns_parsed_configuration",
+          "fullName": "test_install.py::test_load_last_config_returns_parsed_configuration",
           "state": "passed"
         },
         {
-          "name": "test_serialize_complete_task_success",
-          "fullName": "tests/unit/test_task_model.py::TestTaskSerialize::test_serialize_complete_task_success",
+          "name": "test_save_config_persists_all_settings",
+          "fullName": "test_install.py::test_save_config_persists_all_settings",
           "state": "passed"
         },
         {
-          "name": "test_update_fields_success_all_allowed",
-          "fullName": "tests/unit/test_task_model.py::TestTaskUpdateFields::test_update_fields_success_all_allowed",
+          "name": "test_ask_yes_no_accepts_valid_responses",
+          "fullName": "test_install.py::test_ask_yes_no_accepts_valid_responses",
+          "state": "passed"
+        },
+        {
+          "name": "test_update_model_setting_modifies_claude_settings",
+          "fullName": "test_install.py::test_update_model_setting_modifies_claude_settings",
+          "state": "passed"
+        },
+        {
+          "name": "test_create_hooks_adds_guard_configuration",
+          "fullName": "test_install.py::test_create_hooks_adds_guard_configuration",
+          "state": "passed"
+        },
+        {
+          "name": "test_copy_instructions_creates_ide_file",
+          "fullName": "test_install.py::test_copy_instructions_creates_ide_file",
+          "state": "passed"
+        },
+        {
+          "name": "test_configure_ignore_patterns_processes_module_requirements",
+          "fullName": "test_install.py::test_configure_ignore_patterns_processes_module_requirements",
+          "state": "passed"
+        },
+        {
+          "name": "test_module_info_loads_haiku_auto_include_properties",
+          "fullName": "test_install.py::test_module_info_loads_haiku_auto_include_properties",
+          "state": "passed"
+        },
+        {
+          "name": "test_haiku_json_fix_module_has_correct_properties",
+          "fullName": "test_install.py::test_haiku_json_fix_module_has_correct_properties",
+          "state": "passed"
+        },
+        {
+          "name": "test_generate_with_haiku_model_includes_json_fix",
+          "fullName": "test_install.py::test_generate_with_haiku_model_includes_json_fix",
           "state": "passed"
         }
       ]

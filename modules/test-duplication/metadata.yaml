@@ -1,0 +1,4 @@
+name: "Test Duplication Prevention"
+description: "Prevents creation of duplicate test files and similar test functions"
+default: yes
+priority: 1

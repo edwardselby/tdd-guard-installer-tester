@@ -1,0 +1,9 @@
+name: "Quality Control Standards"
+description: "Prevents documentation spam and celebration debug scripts"
+default: yes
+priority: 1
+remove_from_ignore:
+  - "*.md"
+  - "*.txt"
+  - "README*"
+  - "CHANGELOG*"

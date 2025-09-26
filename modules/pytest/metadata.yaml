@@ -1,0 +1,4 @@
+name: "Pytest Standards"
+description: "Enforces pytest patterns over unittest framework"
+default: no
+priority: 5

@@ -1,0 +1,4 @@
+name: "Advanced Evasion Detection"
+description: "Catches sophisticated fake implementation patterns"
+default: no
+priority: 6

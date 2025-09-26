@@ -1,0 +1,7 @@
+name: "Haiku JSON Formatting Fix"
+description: "Provides JSON formatting instructions to fix Haiku model parsing issues"
+priority: 0
+default: no
+auto_include_with_model: "claude-3-5-haiku-20241022"
+mandatory_for_model: true
+remove_from_ignore: []

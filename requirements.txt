@@ -1,16 +1,18 @@
-# Flask and core dependencies
-Flask==3.0.0
-flask-pymongo==2.3.0
-flask-cors==4.0.0
-python-dotenv==1.0.0
-pymongo==4.5.0
+# TDD Guard Configuration Wizard - Core Dependencies
+# Python 3.8+ required
 
-# Development and testing
-pytest==7.4.0
-pytest-flask==1.3.0
-pytest-cov==4.1.0
-mongomock==4.1.2
-freezegun==1.2.2
-pytest-mock==3.11.1
-pytest-xdist==3.3.1
-pytest-html==3.2.0
+# Testing framework
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# TDD Guard integration
+tdd-guard-pytest>=0.1.2
+
+# Standard library modules (included with Python)
+# - pathlib (Python 3.4+)
+# - argparse (Python 3.2+)
+# - json (built-in)
+# - typing (Python 3.5+)
+
+# Development dependencies (optional)
+pytest-flask>=1.3.0  # For Flask integration testing if needed

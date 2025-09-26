@@ -1,0 +1,4 @@
+name: "Comment Violations"
+description: "Blocks implementation-aware comments that violate TDD principles"
+default: yes
+priority: 1

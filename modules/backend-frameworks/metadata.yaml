@@ -1,0 +1,4 @@
+name: "Backend Framework Patterns"
+description: "Allows legitimate Flask/FastAPI patterns while blocking fakes"
+default: yes
+priority: 3

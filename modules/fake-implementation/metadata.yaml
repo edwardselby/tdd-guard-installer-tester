@@ -1,0 +1,4 @@
+name: "Fake Implementation Detection"
+description: "Detects hardcoded returns and test-specific logic patterns"
+default: yes
+priority: 2

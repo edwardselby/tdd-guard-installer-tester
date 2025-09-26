@@ -1,0 +1,4 @@
+name: "Decision Matrix & Templates"
+description: "Provides error templates and validation decision flow (STRONGLY RECOMMENDED)"
+default: yes
+priority: 7
