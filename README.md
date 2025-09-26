@@ -31,19 +31,9 @@ The installer is designed to work across multiple projects in your workspace. He
 ### Directory Structure
 ```
 projects/
-├── my-api-project/           ← Target project (Flask/FastAPI)
-│   ├── app/
-│   ├── tests/
-│   ├── requirements.txt
-│   └── .venv/               ← Virtual environment (auto-detected)
-├── my-web-app/              ← Another target project
-│   ├── src/
-│   ├── tests/
-│   └── venv/                ← Virtual environment (auto-detected)
-└── tdd-guard-installer/     ← This installer (run from here)
-    ├── modules/
-    ├── install.py
-    └── generated/
+├── my-api-project/          # Target project (Flask/FastAPI) with .venv/
+├── my-web-app/              # Another target project with venv/
+└── tdd-guard-installer/     # This installer (run from here)
 ```
 
 ### Prerequisites
@@ -85,87 +75,35 @@ The installer provides a step-by-step interactive experience with automatic proj
 ```bash
 $ python install.py
 
-==================================================
-Target Project Selection
-==================================================
-
+# 1. Project Discovery & Selection
 Discovered 3 compatible project(s) in parent directory:
-
-  1. my-api-project                  (Python - Flask)
-     /Users/dev/projects/my-api-project
-     Virtual env: ✓ Found (.venv)
-     TDD Guard: Not installed
-
-  2. my-web-app                      (Python - FastAPI)
-     /Users/dev/projects/my-web-app
-     Virtual env: ✓ Found (venv)
-     TDD Guard: ⚠  Already installed
-
+  1. my-api-project (Python - Flask) - Virtual env: ✓ Found (.venv)
+  2. my-web-app (Python - FastAPI) - TDD Guard: ⚠ Already installed
   3. [Custom Path] - Specify a different project location
 
 Select target project [1-3]: 1
+✓ Selected: my-api-project (/Users/dev/projects/my-api-project)
 
-Selected: my-api-project
-Path: /Users/dev/projects/my-api-project
-Type: Python - Flask
-
-Continue with this project? [*] Yes  [ ] No (y/n): y
-
+# 2. Package Installation
 Installing TDD Guard package...
-----------------------------------------
-✓ Using virtual environment: .venv
-Running: /Users/dev/projects/my-api-project/.venv/bin/python -m pip install tdd-guard-pytest
 ✓ Successfully installed tdd-guard-pytest
 
-TDD Guard Configuration Wizard
-==================================================
+# 3. Configuration Wizard
+Model Selection: [*] Claude 3.5 Haiku (default)
+✓ Auto-including: Haiku JSON Formatting Fix
 
-Load previous configuration? [*] Yes  [ ] No (y/n):
+Module Selection: Choose from 10 TDD modules
+[*] Test File Duplication Prevention
+[*] Comment Violations Detection
+... (interactive selection)
 
-Model Selection:
-----------------------------------------
-  1. [*] Claude 3.5 Haiku (Fast, efficient model for quick TDD validation)
-  2. [ ] Claude 3.5 Sonnet (Balanced performance and capability)
-  3. [ ] Claude Opus (Most capable model for complex scenarios)
-Select model [1-3] (press Enter for default):
+Claude IDE Integration: [*] Enable hooks, instructions, ignore patterns
+Enforcement: [*] Guard settings protection
 
-✓ Auto-including mandatory module for Claude 3.5 Haiku: Haiku JSON Formatting Fix
-
-Module Selection (ordered by priority):
-----------------------------------------
-[*] Test File Duplication Prevention (+45 lines)
-    Prevents creation of duplicate test files and similar test functions
-Include this module? [*] Yes  [ ] No (y/n): y
-
-Claude IDE Integration:
-----------------------------------------
-Enable TDD Guard hooks in Claude IDE? [*] Yes  [ ] No (y/n): y
-Copy instructions to Claude IDE custom instructions? [*] Yes  [ ] No (y/n): y
-Configure ignore patterns for Claude IDE? [*] Yes  [ ] No (y/n): y
-
-Enforcement Configuration:
-----------------------------------------
-Enable Guard Settings Protection? [*] Yes  [ ] No (y/n): y
-Block File Operation Bypass? [ ] Yes  [*] No (y/n): n
-
-Generate test scenarios? [*] Yes  [ ] No (y/n): y
-
-==================================================
-Installation Complete!
-==================================================
-
+# 4. Installation Complete
 Target Project: my-api-project
-Location: /Users/dev/projects/my-api-project
-
-Configuration:
-  Modules: 6 modules selected
-  Model: claude-3-5-haiku-20241022
-  Package: tdd-guard-pytest ✓ Installed
-
-Files created in target project:
-  ✓ /Users/dev/projects/my-api-project/.claude/settings.local.json
-  ✓ /Users/dev/projects/my-api-project/.claude/tdd-guard/data/instructions.md
-  ✓ /Users/dev/projects/my-api-project/.claude/tdd-guard/data/config.json
+Configuration: 6 modules selected, claude-3-5-haiku-20241022
+Files created: .claude/settings.local.json, .claude/tdd-guard/data/
 
 Next steps:
   1. cd /Users/dev/projects/my-api-project
@@ -256,6 +194,54 @@ Intelligently configures which files TDD Guard should validate:
 #### 4. Enforcement Configuration
 - **Guard Settings Protection**: Prevents agents from reading TDD Guard configuration
 - **File Bypass Blocking**: Blocks shell commands that circumvent TDD validation
+
+## 🔬 Module Testing (Manual Validation)
+
+**Critical Process**: Every module must be manually validated using Claude Code to ensure TDD Guard instructions work correctly.
+
+Module testing is a **manual validation process** where you use Claude Code to iterate through test scenarios in each module's `test-scenarios.md` file. This proves your TDD Guard instructions are robust and working as intended.
+
+**Key Distinction**: Automated tests validate the installer functionality; module testing validates the TDD Guard instructions themselves.
+
+### Process
+
+1. **Open test scenarios**: `cat modules/{module-name}/test-scenarios.md`
+2. **Use Claude Code to test each scenario**:
+   - ❌ **Should BLOCK**: Verify TDD Guard blocks code that violates TDD principles
+   - ✅ **Should ALLOW**: Verify TDD Guard allows legitimate code
+3. **Check error messages**: Ensure blocked code gets helpful feedback
+
+**Example Testing Session**:
+```bash
+$ claude-code
+> "Create a file with this code: [paste scenario from test-scenarios.md]"
+> "Try to save this as test_example.py"
+# Verify: TDD Guard blocks with appropriate error message
+```
+
+### Contributor Requirements
+
+**MANDATORY** when adding/modifying modules:
+
+1. **Create both files**: `instructions.md` (rules) + `test-scenarios.md` (validation scenarios)
+2. **Test with Claude Code**: Validate every ❌ and ✅ scenario works correctly
+3. **Document results**: Confirm expected blocking/allowing behavior
+
+### Available Module Test Scenarios
+
+| Module | Key Test Areas |
+|--------|---------------|
+| **core** | TDD workflow violations, multiple test creation |
+| **test-duplication** | Duplicate test detection, similar naming patterns |
+| **fake-implementation** | Hardcoded returns, test-specific logic |
+| **comment-violations** | Implementation-aware comments, phase awareness |
+| **quality-control** | Documentation spam, celebration scripts |
+| **backend-frameworks** | Flask/FastAPI patterns, framework allowlists |
+| **pytest** | pytest vs unittest patterns |
+| **advanced-evasion** | Sophisticated evasion attempts, indirection |
+| **meta** | Error templates, validation flow |
+
+Module testing ensures TDD Guard instructions actually work and catch edge cases before deployment.
 
 ## 🗺️ Project Compatibility
 
@@ -405,46 +391,9 @@ remove_from_ignore:
 
 ## 📊 Project Structure
 
-### Installer Structure
-```
-tdd-guard-installer/
-├── install.py                         # Main installer implementation
-├── modules/                           # 10 TDD enforcement modules
-│   ├── haiku-json-fix/               # Haiku model JSON formatting fix
-│   ├── core/                         # Red-Green-Refactor enforcement
-│   ├── test-duplication/             # Duplicate test prevention
-│   ├── fake-implementation/          # Hardcoded detection
-│   ├── comment-violations/           # Implementation-aware comments
-│   ├── quality-control/              # Documentation spam prevention
-│   ├── backend-frameworks/           # Framework pattern allowlist
-│   ├── pytest/                       # pytest-specific patterns
-│   ├── advanced-evasion/             # Sophisticated fake detection
-│   ├── meta/                         # Error templates and decision flow
-│   └── models.yaml                   # Claude model configurations
-├── tests/
-│   └── test_generate.py              # Comprehensive test suite (10 tests)
-├── generated/                        # Installer output directory (reference)
-├── docs/
-│   └── CHANGELOG.md                  # Project evolution history
-├── requirements.txt                   # Installer dependencies
-└── README.md                         # This documentation
-```
+**Installer**: `install.py` + `modules/` (10 TDD modules) + `tests/` + `generated/`
 
-### Target Project Structure (after installation)
-```
-target-project/
-├── app/                              # Your application code
-├── tests/                            # Your tests
-├── .venv/                            # Virtual environment with tdd-guard-pytest
-├── .claude/                          # Claude IDE integration (created by installer)
-│   ├── settings.local.json           # Model + hooks configuration
-│   └── tdd-guard/
-│       └── data/
-│           ├── instructions.md       # Active TDD Guard rules
-│           └── config.json          # Ignore patterns
-├── requirements.txt                  # Your project dependencies
-└── pyproject.toml                    # Your project configuration
-```
+**Target Project** (after installation): Your project + `.claude/` (TDD Guard configuration) + `.venv/` (with tdd-guard-pytest installed)
 
 ## 🚫 Troubleshooting
 
@@ -487,91 +436,26 @@ target-project/
 
 ## 🤝 Contributing
 
-We welcome contributions to improve the TDD Guard Multi-Project Installer! Here's how to get started:
-
 ### Development Setup
+1. Fork and clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run tests: `python -m pytest tests/ -v`
+4. Test the installer: `python install.py`
 
-1. **Fork and clone the repository**
-2. **Install dependencies**: `pip install -r requirements.txt`
-3. **Run tests**: `python -m pytest tests/ -v`
-4. **Test the installer**: `python install.py`
+### Guidelines
+- Follow TDD practices
+- Use pytest for tests
+- Each module needs `metadata.yaml` + `instructions.md` + `test-scenarios.md`
+- Test across different project types (Flask/FastAPI/Django)
+- Update documentation and CHANGELOG
 
-### Contributing Guidelines
-
-- **Follow TDD practices** - Write tests first, implement minimal code to pass
-- **Use pytest** - All tests should use pytest flat functions, not unittest classes
-- **Maintain module structure** - Each module should have metadata.yaml and instructions.md
-- **Update documentation** - Keep README and CHANGELOG current
-- **Test across models** - Validate with different Claude models when possible
-- **Test multi-project scenarios** - Verify installation across different project types
-
-### Adding New Modules
-
-To create a new TDD enforcement module:
-
-1. **Create module directory**: `modules/your-module-name/`
-2. **Add metadata.yaml**:
-   ```yaml
-   name: "Your Module Name"
-   description: "Brief description of what this module enforces"
-   priority: 5
-   default: no
-   auto_include_with_model: "claude-3-5-haiku-20241022"  # optional
-   mandatory_for_model: false  # optional
-   remove_from_ignore: ["*.py"]  # optional
-   ```
-3. **Create instructions.md** with TDD rules and patterns
-4. **Test the module** using the installer across different project types
-5. **Submit a pull request** with tests
-
-### Testing Changes
-
-Always test your changes thoroughly:
-```bash
-# Run the full test suite
-python -m pytest tests/ -v --cov=install
-
-# Test installer functionality
-python install.py --list
-python install.py your-new-module
-
-# Test multi-project installation
-# Set up test projects in parent directory and run:
-python install.py  # Test project discovery and selection
-
-# Validate module structure
-python install.py --all
-```
-
-### Multi-Project Testing
-
-When testing the installer:
-
-1. **Create test projects** in parent directory with different frameworks
-2. **Test project discovery** - Verify all projects are found and classified correctly
-3. **Test virtual environment detection** - Create various venv structures
-4. **Test package installation** - Verify `tdd-guard-pytest` installs correctly
-5. **Test cross-project isolation** - Ensure configurations don't interfere
-
-### Testing Across Project Types
-
-Create test projects for each supported type:
-```bash
-# Flask project
-touch requirements.txt
-echo "flask==2.3.0" > requirements.txt
-python -m venv .venv
-
-# FastAPI project
-touch requirements.txt
-echo "fastapi==0.104.0" > requirements.txt
-python -m venv venv
-
-# Django project
-touch requirements.txt
-echo "django==4.2.0" > requirements.txt
-python -m venv env
-```
+### Adding Modules
+1. Create `modules/your-module-name/` directory
+2. Add `metadata.yaml` with name, description, priority, defaults
+3. Create `instructions.md` with TDD rules
+4. Create `test-scenarios.md` with validation scenarios
+5. Test with Claude Code using module testing process
+6. Submit pull request
 
 ## 📚 References
 
