@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-TDD Guard Configuration Wizard
+TDD Guard Configuration Wizard - Multi-Project Installation
 
-Interactive wizard for generating custom TDD Guard instructions with full Claude IDE integration.
+Interactive wizard for installing TDD Guard into any Python project with full Claude IDE integration.
 
 Features:
+    • Multi-Project Support: Auto-discover and select target projects in parent directory
+    • Package Installation: Automatically installs tdd-guard-pytest in target project
     • Module Selection: Choose from 10 TDD modules with smart defaults
     • Model Configuration: Select Claude AI model (Haiku, Sonnet, Opus)
     • Auto-Module Inclusion: Haiku model automatically includes JSON formatting fixes
@@ -12,10 +14,22 @@ Features:
     • Enforcement Configuration: Guard settings protection and file bypass blocking
     • Configuration Persistence: Save/restore all settings with one click
 
+Multi-Project Installation:
+    1. Clone TDD-guard-test into your projects directory
+    2. Run the wizard: python install.py
+    3. Select target project from auto-discovered list
+    4. Wizard installs TDD Guard configuration to selected project
+
+Directory Structure Example:
+    projects/
+    ├── feed_orchestrator_v2/    ← Target project (will be configured)
+    ├── api_gateway/             ← Another project
+    └── TDD-guard-test/          ← Installer location (run from here)
+
 Usage:
-    python install.py                               # Interactive wizard (default)
-    python install.py --all                         # Include all modules (CLI mode)
-    python install.py core pytest                   # Specific modules only (CLI mode)
+    python install.py                               # Interactive wizard with project selection
+    python install.py --all                         # Include all modules (CLI mode, no project selection)
+    python install.py core pytest                   # Specific modules (CLI mode, no project selection)
     python install.py --list                        # List available modules
 
 Interactive Wizard Flow:
@@ -42,6 +56,7 @@ import os
 import sys
 import json
 import argparse
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
@@ -64,6 +79,277 @@ def simple_yaml_load(content: str) -> Dict:
                 value = int(value)
             result[key] = value
     return result
+
+# ============================================================================
+# Phase 1: Project Discovery & Detection Functions
+# ============================================================================
+
+def detect_project_type(project_path: Path) -> str:
+    """Identify project framework type by analyzing dependencies"""
+    requirements_path = project_path / 'requirements.txt'
+    pyproject_path = project_path / 'pyproject.toml'
+
+    dependencies = []
+
+    if requirements_path.exists():
+        try:
+            with open(requirements_path, 'r') as f:
+                dependencies = f.read().lower()
+        except Exception:
+            pass
+
+    if pyproject_path.exists():
+        try:
+            with open(pyproject_path, 'r') as f:
+                dependencies += f.read().lower()
+        except Exception:
+            pass
+
+    if 'flask' in dependencies:
+        return "Python - Flask"
+    elif 'fastapi' in dependencies:
+        return "Python - FastAPI"
+    elif 'django' in dependencies:
+        return "Python - Django"
+    else:
+        return "Python - General"
+
+def find_virtual_environment(project_path: Path) -> Optional[Path]:
+    """Locate virtual environment in project"""
+    common_venv_names = ['.venv', 'venv', 'env', 'virtualenv']
+
+    for venv_name in common_venv_names:
+        venv_path = project_path / venv_name
+        if venv_path.exists():
+            python_path = venv_path / 'bin' / 'python'
+            if python_path.exists():
+                return python_path
+            python_path_win = venv_path / 'Scripts' / 'python.exe'
+            if python_path_win.exists():
+                return python_path_win
+
+    return None
+
+def validate_project_path(project_path: Path) -> Tuple[bool, str]:
+    """Validate that path is a suitable target project"""
+    installer_dir = Path(__file__).parent
+
+    if not project_path.exists():
+        return False, f"Path does not exist: {project_path}"
+
+    if not project_path.is_dir():
+        return False, f"Path is not a directory: {project_path}"
+
+    if project_path.resolve() == installer_dir.resolve():
+        return False, "Cannot install to TDD-guard-test directory itself"
+
+    project_indicators = [
+        project_path / '.git',
+        project_path / 'pyproject.toml',
+        project_path / 'requirements.txt',
+        project_path / 'package.json'
+    ]
+
+    if not any(indicator.exists() for indicator in project_indicators):
+        return False, "No project indicators found (.git, pyproject.toml, requirements.txt, package.json)"
+
+    try:
+        test_file = project_path / '.tdd_guard_write_test'
+        test_file.touch()
+        test_file.unlink()
+    except PermissionError:
+        return False, f"No write permission for: {project_path}"
+    except Exception as e:
+        return False, f"Cannot write to path: {e}"
+
+    return True, "Valid project path"
+
+def discover_projects() -> List[Dict]:
+    """Scan parent directory for compatible Python projects"""
+    parent_dir = Path(__file__).parent.parent
+    installer_dir = Path(__file__).parent.name
+
+    projects = []
+
+    try:
+        for item in parent_dir.iterdir():
+            if not item.is_dir():
+                continue
+
+            if item.name == installer_dir:
+                continue
+
+            is_project = (
+                (item / '.git').exists() or
+                (item / 'pyproject.toml').exists() or
+                (item / 'requirements.txt').exists()
+            )
+
+            if is_project:
+                project_type = detect_project_type(item)
+                venv_python = find_virtual_environment(item)
+
+                has_tdd_guard = (item / '.claude' / 'tdd-guard').exists()
+
+                projects.append({
+                    'name': item.name,
+                    'path': item,
+                    'type': project_type,
+                    'venv': venv_python,
+                    'has_tdd_guard': has_tdd_guard
+                })
+
+    except Exception as e:
+        print(f"Warning: Error scanning parent directory: {e}")
+
+    return sorted(projects, key=lambda p: p['name'])
+
+# ============================================================================
+# Phase 2: Interactive Project Selection
+# ============================================================================
+
+def select_target_project() -> Optional[Path]:
+    """Interactive project selection with auto-discovery"""
+    print("\n" + "=" * 50)
+    print("Target Project Selection")
+    print("=" * 50)
+
+    projects = discover_projects()
+
+    if not projects:
+        print("\nNo compatible projects found in parent directory.")
+        print("Make sure you have cloned TDD-guard-test into your projects directory.")
+        print("\nWould you like to specify a custom path? (y/n): ", end='')
+        response = input().strip().lower()
+        if response == 'y':
+            custom_path = input("\nEnter project path: ").strip()
+            project_path = Path(custom_path).expanduser().resolve()
+            is_valid, message = validate_project_path(project_path)
+            if is_valid:
+                return project_path
+            else:
+                print(f"\n❌ Invalid path: {message}")
+                return None
+        return None
+
+    print(f"\nDiscovered {len(projects)} compatible project(s) in parent directory:\n")
+
+    for i, project in enumerate(projects, 1):
+        print(f"  {i}. {project['name']:30} ({project['type']})")
+        print(f"     {str(project['path'])}")
+
+        venv_status = "✓ Found" if project['venv'] else "✗ Not found"
+        if project['venv']:
+            venv_name = project['venv'].parent.parent.name
+            venv_status += f" ({venv_name})"
+        print(f"     Virtual env: {venv_status}")
+
+        tdd_status = "⚠  Already installed" if project['has_tdd_guard'] else "Not installed"
+        print(f"     TDD Guard: {tdd_status}")
+        print()
+
+    print(f"  {len(projects) + 1}. [Custom Path] - Specify a different project location")
+    print()
+
+    while True:
+        try:
+            choice = input(f"Select target project [1-{len(projects) + 1}]: ").strip()
+
+            if not choice:
+                print("Installation cancelled.")
+                return None
+
+            choice_num = int(choice)
+
+            if choice_num == len(projects) + 1:
+                custom_path = input("\nEnter project path: ").strip()
+                project_path = Path(custom_path).expanduser().resolve()
+                is_valid, message = validate_project_path(project_path)
+                if is_valid:
+                    return project_path
+                else:
+                    print(f"\n❌ Invalid path: {message}")
+                    continue
+
+            if 1 <= choice_num <= len(projects):
+                selected = projects[choice_num - 1]
+                print(f"\nSelected: {selected['name']}")
+                print(f"Path: {selected['path']}")
+                print(f"Type: {selected['type']}")
+
+                if selected['has_tdd_guard']:
+                    print("\n⚠  Warning: This project already has TDD Guard installed.")
+                    print("Continuing will overwrite existing configuration.")
+
+                confirm = input("\nContinue with this project? [*] Yes  [ ] No (y/n): ").strip().lower()
+                if confirm in ['y', 'yes', '']:
+                    return selected['path']
+                else:
+                    print("\nInstallation cancelled.")
+                    return None
+            else:
+                print(f"Please enter a number between 1 and {len(projects) + 1}")
+
+        except ValueError:
+            print("Please enter a valid number")
+        except KeyboardInterrupt:
+            print("\n\nInstallation cancelled.")
+            return None
+
+# ============================================================================
+# Phase 3: Package Installation
+# ============================================================================
+
+def install_tdd_guard_package(project_path: Path) -> bool:
+    """Install tdd-guard-pytest in target project's environment"""
+    print("\nInstalling TDD Guard package...")
+    print("-" * 40)
+
+    venv_python = find_virtual_environment(project_path)
+
+    if not venv_python:
+        print("⚠  Warning: No virtual environment detected in target project.")
+        print(f"Searched for: .venv/, venv/, env/, virtualenv/")
+        print("\nOptions:")
+        print("  1. Install system-wide (not recommended)")
+        print("  2. Cancel and create virtual environment first")
+
+        choice = input("\nYour choice [1-2]: ").strip()
+
+        if choice != '1':
+            print("\n❌ Installation cancelled. Create a virtual environment and try again.")
+            return False
+
+        python_executable = sys.executable
+    else:
+        python_executable = str(venv_python)
+        venv_name = venv_python.parent.parent.name
+        print(f"✓ Using virtual environment: {venv_name}")
+
+    try:
+        print(f"Running: {python_executable} -m pip install tdd-guard-pytest")
+
+        result = subprocess.run(
+            [python_executable, '-m', 'pip', 'install', 'tdd-guard-pytest'],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode == 0:
+            print("✓ Successfully installed tdd-guard-pytest")
+            return True
+        else:
+            print(f"❌ Installation failed:")
+            print(result.stderr)
+            return False
+
+    except subprocess.TimeoutExpired:
+        print("❌ Installation timed out after 60 seconds")
+        return False
+    except Exception as e:
+        print(f"❌ Installation error: {e}")
+        return False
 
 class ModuleInfo:
     def __init__(self, name: str, path: Path, silent: bool = False):
@@ -194,7 +480,7 @@ def load_models() -> List[Dict]:
 
 def load_last_config() -> Optional[Dict]:
     """Load the last configuration from generated/.last-config.json"""
-    config_path = Path(__file__).parent.parent / 'generated' / '.last-config.json'
+    config_path = Path(__file__).parent / 'generated' / '.last-config.json'
     if config_path.exists():
         try:
             with open(config_path, 'r') as f:
@@ -203,14 +489,15 @@ def load_last_config() -> Optional[Dict]:
             pass
     return None
 
-def save_config(selected_modules: List[str], generate_tests: bool, ide_config: Dict):
+def save_config(selected_modules: List[str], generate_tests: bool, ide_config: Dict, target_path: Optional[Path] = None):
     """Save configuration to generated/.last-config.json"""
-    config_path = Path(__file__).parent.parent / 'generated' / '.last-config.json'
+    config_path = Path(__file__).parent / 'generated' / '.last-config.json'
     config_path.parent.mkdir(exist_ok=True)
 
     config = {
         'selected_modules': selected_modules,
         'generate_tests': generate_tests,
+        'target_path': str(target_path) if target_path else None,
         'model_id': ide_config.get('model_id'),
         'enable_hooks': ide_config.get('enable_hooks', False),
         'copy_instructions': ide_config.get('copy_instructions', False),
@@ -241,9 +528,9 @@ def ask_yes_no(prompt: str, default: bool = True) -> bool:
             return False
         print("Please enter 'y' or 'n'")
 
-def update_model_setting(model_id: str) -> bool:
+def update_model_setting(model_id: str, target_path: Path) -> bool:
     """Update the TDD_GUARD_MODEL_VERSION in .claude/settings.local.json"""
-    settings_path = Path(__file__).parent.parent / '.claude' / 'settings.local.json'
+    settings_path = target_path / '.claude' / 'settings.local.json'
 
     try:
         # Create .claude directory if it doesn't exist
@@ -273,12 +560,12 @@ def update_model_setting(model_id: str) -> bool:
         print(f"Warning: Failed to update model setting: {e}")
         return False
 
-def create_hooks(enabled: bool) -> bool:
+def create_hooks(enabled: bool, target_path: Path) -> bool:
     """Add TDD Guard hooks to .claude/settings.local.json"""
     if not enabled:
         return True
 
-    settings_path = Path(__file__).parent.parent / '.claude' / 'settings.local.json'
+    settings_path = target_path / '.claude' / 'settings.local.json'
 
     try:
         # Create .claude directory if it doesn't exist
@@ -324,12 +611,12 @@ def create_hooks(enabled: bool) -> bool:
         print(f"Warning: Failed to create hooks: {e}")
         return False
 
-def copy_instructions_to_ide(enabled: bool, instructions_content: str) -> bool:
+def copy_instructions_to_ide(enabled: bool, instructions_content: str, target_path: Path) -> bool:
     """Copy generated instructions to .claude/tdd-guard/data/instructions.md"""
     if not enabled:
         return True
 
-    instructions_path = Path(__file__).parent.parent / '.claude' / 'tdd-guard' / 'data' / 'instructions.md'
+    instructions_path = target_path / '.claude' / 'tdd-guard' / 'data' / 'instructions.md'
 
     try:
         # Create directory structure
@@ -345,12 +632,12 @@ def copy_instructions_to_ide(enabled: bool, instructions_content: str) -> bool:
         print(f"Warning: Failed to copy instructions to IDE: {e}")
         return False
 
-def configure_ignore_patterns(enabled: bool, selected_modules: List[ModuleInfo]) -> bool:
+def configure_ignore_patterns(enabled: bool, selected_modules: List[ModuleInfo], target_path: Path) -> bool:
     """Configure ignore patterns in .claude/tdd-guard/data/config.json"""
     if not enabled:
         return True
 
-    config_path = Path(__file__).parent.parent / '.claude' / 'tdd-guard' / 'data' / 'config.json'
+    config_path = target_path / '.claude' / 'tdd-guard' / 'data' / 'config.json'
 
     try:
         # Create directory structure
@@ -393,12 +680,12 @@ def configure_ignore_patterns(enabled: bool, selected_modules: List[ModuleInfo])
         print(f"Warning: Failed to configure ignore patterns: {e}")
         return False
 
-def configure_enforcement(protect_settings: bool, block_bypass: bool) -> bool:
+def configure_enforcement(protect_settings: bool, block_bypass: bool, target_path: Path) -> bool:
     """Configure TDD Guard enforcement in .claude/settings.local.json"""
     if not protect_settings and not block_bypass:
         return True
 
-    settings_path = Path(__file__).parent.parent / '.claude' / 'settings.local.json'
+    settings_path = target_path / '.claude' / 'settings.local.json'
 
     try:
         # Create .claude directory if it doesn't exist
@@ -703,6 +990,27 @@ def main():
 
     args = parser.parse_args()
 
+    # PHASE 5.1: Project Selection Step
+    # Only do project selection for wizard mode (not CLI mode)
+    target_path = None
+    if not args.list and not args.all and not args.modules:
+        target_path = select_target_project()
+        if not target_path:
+            print()
+            print("Installation cancelled. No target project selected.")
+            sys.exit(0)
+
+        # Install TDD Guard package
+        package_installed = install_tdd_guard_package(target_path)
+        if not package_installed:
+            print()
+            print("Warning: Failed to install tdd-guard-pytest package.")
+            print("You may need to install it manually:")
+            print("  cd ", target_path)
+            print("  pip install tdd-guard-pytest")
+            if not ask_yes_no("Continue anyway?", False):
+                sys.exit(1)
+
     # Discover available modules
     available_modules = discover_modules()
 
@@ -760,8 +1068,8 @@ def main():
         print("         Quality may degrade with instructions over 300 lines.")
         print()
 
-    # Write output files
-    output_dir = Path(__file__).parent.parent
+    # Write output files (keep local to TDD-guard-test)
+    output_dir = Path(__file__).parent
 
     # Ensure generated directory exists
     generated_dir = output_dir / 'generated'
@@ -779,22 +1087,29 @@ def main():
             f.write(tests)
 
     # Save configuration for next time
-    save_config(selected_modules, generate_tests, ide_config)
+    save_config(selected_modules, generate_tests, ide_config, target_path)
 
-    # Claude IDE Integration
+    # Claude IDE Integration (only if target_path is set)
     ide_results = {}
-    if ide_config['model_id']:
-        ide_results['model'] = update_model_setting(ide_config['model_id'])
+    if target_path:
+        if ide_config['model_id']:
+            ide_results['model'] = update_model_setting(ide_config['model_id'], target_path)
 
-    ide_results['hooks'] = create_hooks(ide_config['enable_hooks'])
-    ide_results['instructions'] = copy_instructions_to_ide(ide_config['copy_instructions'], instructions)
+        ide_results['hooks'] = create_hooks(ide_config['enable_hooks'], target_path)
+        ide_results['instructions'] = copy_instructions_to_ide(ide_config['copy_instructions'], instructions, target_path)
 
-    # Get selected module objects for ignore patterns
-    selected_module_objects = [m for m in available_modules if m.name in selected_modules]
-    ide_results['ignore_patterns'] = configure_ignore_patterns(ide_config['configure_ignore_patterns'], selected_module_objects)
+        # Get selected module objects for ignore patterns
+        selected_module_objects = [m for m in available_modules if m.name in selected_modules]
+        ide_results['ignore_patterns'] = configure_ignore_patterns(ide_config['configure_ignore_patterns'], selected_module_objects, target_path)
+    else:
+        # CLI mode without target_path - skip IDE integration
+        ide_results = {'model': False, 'hooks': False, 'instructions': False, 'ignore_patterns': False}
 
-    # Enforcement Configuration
-    ide_results['enforcement'] = configure_enforcement(ide_config['protect_guard_settings'], ide_config['block_file_bypass'])
+    # Enforcement Configuration (only if target_path is set)
+    if target_path:
+        ide_results['enforcement'] = configure_enforcement(ide_config['protect_guard_settings'], ide_config['block_file_bypass'], target_path)
+    else:
+        ide_results['enforcement'] = False
 
     # Validate generated files and report results
     print()
@@ -873,6 +1188,35 @@ def main():
         print(f"All validations passed!")
     else:
         print(f"Some validations failed - please review the generated files")
+
+    # PHASE 5.2: Installation Summary (only for wizard mode with target)
+    if target_path:
+        print()
+        print("=" * 50)
+        print("Installation Complete!")
+        print("=" * 50)
+        print()
+        print("Target Project:", target_path.name)
+        print("Location:", str(target_path))
+        print()
+        print("Configuration:")
+        print("  Modules:", len(selected_modules), "modules selected")
+        print("  Model:", ide_config.get('model_id', 'Not configured'))
+        print("  Package: tdd-guard-pytest", "✓ Installed" if package_installed else "✗ Not installed")
+        print()
+        print("Files created in target project:")
+        if ide_results.get('hooks'):
+            print("  ✓", target_path / '.claude' / 'settings.local.json')
+        if ide_results.get('instructions'):
+            print("  ✓", target_path / '.claude' / 'tdd-guard' / 'data' / 'instructions.md')
+        if ide_results.get('ignore_patterns'):
+            print("  ✓", target_path / '.claude' / 'tdd-guard' / 'data' / 'config.json')
+        print()
+        print("Next steps:")
+        print("  1. cd", str(target_path))
+        print("  2. Restart Claude Code to load new hooks")
+        print("  3. Start writing tests with TDD Guard protection!")
+        print()
 
 if __name__ == '__main__':
     main()

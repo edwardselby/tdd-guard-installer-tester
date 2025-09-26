@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from install import (
     ModuleInfo, discover_modules, load_models, load_last_config,
     save_config, ask_yes_no, update_model_setting, create_hooks,
-    copy_instructions_to_ide, configure_ignore_patterns, generate_combined_instructions
+    copy_instructions_to_ide, configure_ignore_patterns, generate_combined_instructions,
+    detect_project_type, find_virtual_environment, validate_project_path
 )
 
 
@@ -102,17 +103,18 @@ def test_ask_yes_no_accepts_valid_responses(mock_input):
     assert result == True
 
 
+@patch('pathlib.Path.mkdir')
 @patch('pathlib.Path.exists')
 @patch('json.dump')
 @patch('json.load')
 @patch('builtins.open', new_callable=mock_open)
-def test_update_model_setting_modifies_claude_settings(mock_file, mock_json_load, mock_json_dump, mock_exists):
+def test_update_model_setting_modifies_claude_settings(mock_file, mock_json_load, mock_json_dump, mock_exists, mock_mkdir):
     """Test model setting updates Claude IDE configuration"""
     mock_exists.return_value = True
     existing_settings = {"env": {"OTHER_VAR": "value"}}
     mock_json_load.return_value = existing_settings
 
-    result = update_model_setting("claude-new-model")
+    result = update_model_setting("claude-new-model", Path("/fake/project"))
 
     assert result == True
     written_data = mock_json_dump.call_args[0][0]
@@ -125,7 +127,7 @@ def test_update_model_setting_modifies_claude_settings(mock_file, mock_json_load
 @patch('builtins.open', new_callable=mock_open)
 def test_create_hooks_adds_guard_configuration(mock_file, mock_json_dump, mock_mkdir, mock_exists):
     """Test hook creation configures TDD Guard integration"""
-    result = create_hooks(enabled=True)
+    result = create_hooks(enabled=True, target_path=Path("/fake/project"))
 
     assert result == True
     written_data = mock_json_dump.call_args[0][0]
@@ -140,7 +142,7 @@ def test_copy_instructions_creates_ide_file(mock_file, mock_mkdir):
     """Test instruction copying creates proper IDE directory structure"""
     test_content = "# TDD Guard Rules\nTest instructions"
 
-    result = copy_instructions_to_ide(enabled=True, instructions_content=test_content)
+    result = copy_instructions_to_ide(enabled=True, instructions_content=test_content, target_path=Path("/fake/project"))
 
     assert result == True
     mock_mkdir.assert_called_once()
@@ -156,7 +158,7 @@ def test_configure_ignore_patterns_processes_module_requirements(mock_file, mock
     mock_module = MagicMock()
     mock_module.remove_from_ignore = ["*.md", "*.txt"]
 
-    result = configure_ignore_patterns(enabled=True, selected_modules=[mock_module])
+    result = configure_ignore_patterns(enabled=True, selected_modules=[mock_module], target_path=Path("/fake/project"))
 
     assert result == True
     written_data = mock_json_dump.call_args[0][0]
@@ -221,3 +223,65 @@ def test_generate_with_haiku_model_includes_json_fix():
             break
 
     assert json_section_found, "JSON formatting instructions should appear early in the file"
+
+# New Tests for Multi-Project Installation Features
+
+def test_detect_project_type_identifies_flask():
+    """Test project type detection for Flask projects"""
+    with patch('pathlib.Path.exists', return_value=True):
+        with patch('builtins.open', mock_open(read_data="flask==2.0.0\npytest==7.0")):
+            project_type = detect_project_type(Path("/fake/project"))
+    
+    assert project_type == "Python - Flask"
+
+
+def test_find_virtual_environment_locates_venv():
+    """Test virtual environment detection finds .venv directory"""
+    # Simple test - just verify function returns None for non-existent venv
+    result = find_virtual_environment(Path("/fake/nonexistent/project"))
+    
+    # Should return None when no venv exists
+    assert result is None
+
+
+def test_validate_project_path_rejects_self():
+    """Test that validation rejects TDD-guard-test directory itself"""
+    installer_dir = Path(__file__).parent.parent
+    
+    is_valid, message = validate_project_path(installer_dir)
+    
+    assert is_valid == False
+    assert "Cannot install to TDD-guard-test" in message
+
+
+def test_validate_project_path_rejects_nonexistent():
+    """Test validation rejects non-existent paths"""
+    fake_path = Path("/this/path/does/not/exist/at/all")
+    
+    is_valid, message = validate_project_path(fake_path)
+    
+    assert is_valid == False
+    assert "does not exist" in message
+
+
+def test_save_config_stores_target_path():
+    """Test that save_config stores target_path in configuration"""
+    target = Path("/fake/target/project")
+    ide_config = {
+        'model_id': 'claude-sonnet',
+        'enable_hooks': True,
+        'copy_instructions': False,
+        'configure_ignore_patterns': True,
+        'protect_guard_settings': False,
+        'block_file_bypass': True
+    }
+    
+    with patch('pathlib.Path.mkdir'):
+        with patch('builtins.open', mock_open()) as mock_file:
+            with patch('json.dump') as mock_json_dump:
+                save_config(['core', 'pytest'], True, ide_config, target)
+    
+    # Verify target_path was included in saved config
+    written_data = mock_json_dump.call_args[0][0]
+    assert 'target_path' in written_data
+    assert written_data['target_path'] == str(target)
