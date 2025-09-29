@@ -140,8 +140,9 @@ def validate_project_path(project_path: Path) -> Tuple[bool, str]:
     if not project_path.is_dir():
         return False, f"Path is not a directory: {project_path}"
 
-    if project_path.resolve() == installer_dir.resolve():
-        return False, "Cannot install to TDD-guard-test directory itself"
+    # Allow installation to this project itself for testing/fixing purposes
+    # if project_path.resolve() == installer_dir.resolve():
+    #     return False, "Cannot install to TDD-guard-test directory itself"
 
     project_indicators = [
         project_path / '.git',
@@ -167,16 +168,34 @@ def validate_project_path(project_path: Path) -> Tuple[bool, str]:
 def discover_projects() -> List[Dict]:
     """Scan parent directory for compatible Python projects"""
     parent_dir = Path(__file__).parent.parent
-    installer_dir = Path(__file__).parent.name
+    installer_dir = Path(__file__).parent
 
     projects = []
 
+    # Add THIS PROJECT as index 0 for testing/fixing purposes
+    try:
+        project_type = detect_project_type(installer_dir)
+        venv_python = find_virtual_environment(installer_dir)
+        has_tdd_guard = (installer_dir / '.claude' / 'tdd-guard').exists()
+
+        projects.append({
+            'name': f"{installer_dir.name} (THIS PROJECT)",
+            'path': installer_dir,
+            'type': project_type,
+            'venv': venv_python,
+            'has_tdd_guard': has_tdd_guard
+        })
+    except Exception as e:
+        print(f"Warning: Error scanning this project: {e}")
+
+    # Scan parent directory for other projects
     try:
         for item in parent_dir.iterdir():
             if not item.is_dir():
                 continue
 
-            if item.name == installer_dir:
+            # Skip the installer directory (already added above as "THIS PROJECT")
+            if item.resolve() == installer_dir.resolve():
                 continue
 
             is_project = (
@@ -202,7 +221,11 @@ def discover_projects() -> List[Dict]:
     except Exception as e:
         print(f"Warning: Error scanning parent directory: {e}")
 
-    return sorted(projects, key=lambda p: p['name'])
+    # Sort other projects by name, but keep THIS PROJECT at index 0
+    this_project = projects[0]  # THIS PROJECT
+    other_projects = sorted(projects[1:], key=lambda p: p['name'])
+
+    return [this_project] + other_projects
 
 # ============================================================================
 # Phase 2: Interactive Project Selection

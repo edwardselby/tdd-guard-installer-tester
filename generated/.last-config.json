@@ -1,12 +1,20 @@
 {
   "selected_modules": [
-    "haiku-json-fix"
+    "haiku-json-fix",
+    "test-duplication",
+    "comment-violations",
+    "quality-control",
+    "fake-implementation",
+    "backend-frameworks",
+    "core",
+    "meta"
   ],
   "generate_tests": true,
-  "model_id": null,
-  "enable_hooks": false,
-  "copy_instructions": false,
-  "configure_ignore_patterns": false,
-  "protect_guard_settings": true,
+  "target_path": "/Users/edward/PycharmProjects/tdd-guard-installer-tester",
+  "model_id": "claude-3-5-haiku-20241022",
+  "enable_hooks": true,
+  "copy_instructions": true,
+  "configure_ignore_patterns": true,
+  "protect_guard_settings": false,
   "block_file_bypass": false
 }
