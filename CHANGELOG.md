@@ -5,6 +5,15 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2025-10-01
+
+### Added
+- **Strict JSON Response Format Module**: Fixes JSON parsing errors in large file validation
+  - Reduces JSON parsing errors from 67% to 0%
+
+### Removed
+- **Haiku JSON Fix Module**: Replaced by strict-json-responses module
+
 ## [3.0.0] - 2024-09-26
 
 ### Major: Multi-Project Installation Support

@@ -1,40 +1,120 @@
 # TDD Guard Rules
 
-## ⚡ JSON Response Formatting (For Haiku Model)
+## 🚫 Response Formatting Rules
 
-**CRITICAL**: When responding to TDD Guard validation requests, ensure proper JSON formatting:
+### ❌ **BLOCK Response Patterns:**
 
-### JSON Escaping Rules
-- **Escape quotes in code**: `return "authenticated"` → `return \\"authenticated\\"`
-- **Escape newlines**: `\n` → `\\n`
-- **Escape backslashes**: `\` → `\\\\`
-- **Escape control characters**: Remove or escape tab, carriage return, form feed
+- Including raw code snippets in validation reasoning
+- Multi-line quoted code blocks in JSON values
+- Unescaped newlines (`\n`) or special characters in reasoning text
+- Embedding function/class definitions in responses
+- Quoting user's file content verbatim
+- Large reasoning text for files >150 lines
 
-### Valid JSON Structure
-Always use proper JSON structure for responses:
+### ✅ **ALLOW Response Patterns:**
+
+- Brief code references (e.g., "the test_user_workflow function")
+- Summarized behavior descriptions without quotes
+- Properly escaped JSON strings
+- Compact reasoning (max 200 characters for files >150 lines)
+- Line number references instead of code quotes (e.g., "lines 50-100")
+- Single-line reasoning preferred
+
+---
+
+## 📋 JSON Response Format Requirements
+
+### For Large Files (150+ lines):
+- **Reasoning**: Maximum 200 characters
+- **Format**: `{"reasoning": "Brief summary", "allowed": true/false}`
+- **NO** code snippets or multi-line content
+- Reference by line numbers, not content quotes
+
+### For All Files:
+- Properly escape special characters: `\n`, `\r`, `\t`, `"`, `\`
+- Use compact summaries, not verbatim quotes
+- Single-line reasoning preferred
+- Keep JSON structure minimal and clean
+
+---
+
+## ✅ GOOD Response Examples
+
+### Large file validation:
 ```json
-{
-  "violation_type": "string",
-  "message": "string",
-  "suggestion": "string"
-}
+{"reasoning": "Test covers complete workflow (lines 1-307). Violates TDD single-focus principle.", "allowed": false}
 ```
 
-### Code Content in JSON
-When including code snippets in JSON responses:
-- Original: `def auth(): return "ok"`
-- JSON: `"code": "def auth(): return \\"ok\\""`
+### Alternative for same scenario:
+```json
+{"reasoning": "Integration test detected. Recommend splitting into unit tests per step.", "allowed": false}
+```
 
-### Multi-line Code in JSON
-For multi-line code:
-- Original:
-  ```python
-  def authenticate():
-      return "authenticated"
-  ```
-- JSON: `"code": "def authenticate():\\n    return \\"authenticated\\""`
+### Allowing a valid test:
+```json
+{"reasoning": "Single-focus unit test following TDD principles.", "allowed": true}
+```
 
-**This module fixes JSON parsing errors that occur when Haiku model processes authentication functions and other string-heavy code patterns.**
+---
+
+## ❌ BAD Response Examples (Causes JSON Parsing Errors)
+
+### Including code snippets (CAUSES ERROR):
+```json
+{"reasoning": "Function:\ndef test_workflow():\n    \"\"\"Long docstring...\"\"\"\n    query = \"SELECT...\"", "allowed": false}
+```
+**Error**: Unescaped newlines break JSON parsing at validator.js:25
+
+### Verbatim code quoting (CAUSES ERROR):
+```json
+{"reasoning": "Test contains:\n    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'\n    This violates...", "allowed": false}
+```
+**Error**: "Bad control character in string literal in JSON"
+
+### Large unescaped content (CAUSES ERROR):
+```json
+{"reasoning": "The test function has a 50-line docstring that explains: \"Test Flow:\n1. User Registration...\n2. Email Verification...\"", "allowed": false}
+```
+**Error**: "Unterminated string in JSON"
+
+---
+
+## 🔧 Module Behavior
+
+**Scope**: Claude CLI validation response formatting only
+
+**Does NOT affect**:
+- Code validation logic
+- TDD enforcement rules
+- Other module behaviors
+
+**Target Error**: "Bad control character in string literal in JSON" at validator.js:25
+
+**Expected Impact**:
+- JSON parsing error rate: 67% → <5%
+- Overall success rate: 0% → ~60-65%
+- TDD violations remain at ~33% (legitimate enforcement)
+
+---
+
+## 📊 Response Strategy by File Size
+
+| File Size | Max Reasoning Length | Strategy |
+|-----------|---------------------|----------|
+| <50 lines | 500 characters | Normal detailed reasoning |
+| 50-150 lines | 300 characters | Concise reasoning with key points |
+| >150 lines | 200 characters | Minimal summary, line references only |
+
+---
+
+## 🎯 Key Principles
+
+1. **Never quote code**: Summarize behavior instead
+2. **Always escape**: Ensure all JSON strings are properly escaped
+3. **Stay compact**: Large files need minimal reasoning
+4. **Reference locations**: Use line numbers, not content
+5. **Single-line preferred**: Avoid multi-line reasoning text
+
 
 ## 🚨 Test File Duplication Prevention
 
@@ -200,6 +280,55 @@ def get_users():
 ❌ **BLOCK:** Removing implementation with failing tests (backward TDD movement)
 ✅ **ALLOW:** Refactoring only when all tests pass
 ✅ **ALLOW:** Real algorithm implementations (fibonacci, sorting, validation)
+
+## 🧪 PYTEST STANDARDS ENFORCEMENT
+
+### Test Framework Requirements
+❌ **BLOCK:** unittest framework (`class TestSomething`, `self.assert*`)
+✅ **REQUIRE:** pytest flat functions (`def test_function()`, `assert condition`)
+
+### Mock Pattern Enforcement
+❌ **BLOCK:** `with patch('module.func') as mock:` (context managers)
+✅ **REQUIRE:** `@patch('module.func')` decorators above function
+
+### Mock Organization Standards
+❌ **BLOCK:** Shared mocks in individual test files
+✅ **REQUIRE:** Cross-file mocks in `conftest.py`, file-specific mocks at top
+
+### Test Structure Requirements
+❌ **BLOCK:** Multiple similar tests (`test_discount_gold`, `test_discount_silver`)
+✅ **REQUIRE:** `@pytest.mark.parametrize` for similar scenarios
+
+### Exception Testing Standards
+❌ **BLOCK:** `self.assertRaises(ValueError)`
+✅ **REQUIRE:** `with pytest.raises(ValueError):`
+
+## 🔍 Sophisticated Evasion Patterns
+
+### Multi-Level Indirection
+❌ **BLOCK:** Functions calling functions hiding hardcoded returns
+- `def auth() → get_result() → fetch_status() → "authenticated"`
+
+### Configuration File Abuse
+❌ **BLOCK:** Config files hiding hardcoded values
+- `config.py: RESPONSES = {"auth": "success"}; return RESPONSES["auth"]`
+
+### Method Chaining & Builder Patterns
+❌ **BLOCK:** Builders that assemble hardcoded responses
+- `ResponseBuilder().success().data("fake").build()`
+
+### Variable-Disguised Hardcoding
+❌ **BLOCK:** Variables that hide hardcoded returns
+- `result = "success"; status = result; return status`
+
+### Ternary Operator Fakes
+❌ **BLOCK:** Ternary operators with hardcoded outcomes
+- `return "success" if True else "failed"`
+
+### Import Alias Duplication
+❌ **BLOCK:** Same model imported under different aliases in multiple test files
+
+✅ **ALLOW:** Complex legitimate logic with real calculations, database operations, validation rules
 
 ## 🎯 DECISION MATRIX
 

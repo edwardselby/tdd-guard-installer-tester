@@ -1,12 +1,14 @@
 {
   "selected_modules": [
-    "haiku-json-fix",
+    "strict-json-responses",
     "test-duplication",
     "comment-violations",
     "quality-control",
     "fake-implementation",
     "backend-frameworks",
     "core",
+    "pytest",
+    "advanced-evasion",
     "meta"
   ],
   "generate_tests": true,

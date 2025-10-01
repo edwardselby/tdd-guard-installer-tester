@@ -1,0 +1,6 @@
+name: "Strict JSON Response Format"
+description: "Enforces strict JSON formatting in validation responses to prevent parsing errors with large files"
+priority: 0
+default: yes
+mandatory_for_model: true
+remove_from_ignore: []
