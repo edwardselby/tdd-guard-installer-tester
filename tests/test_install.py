@@ -55,7 +55,7 @@ def test_load_models_returns_default_when_file_missing():
         models = load_models()
 
     assert len(models) == 1
-    assert models[0]['id'] == "claude-3-5-haiku-20241022"
+    assert models[0]['id'] == "claude-sonnet-4-0"
     assert models[0]['default'] == True
 
 

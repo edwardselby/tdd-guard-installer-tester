@@ -5,6 +5,22 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-10-08
+
+### Changed
+- **Default Model**: Changed from Claude 3.5 Haiku to Claude Sonnet 4.0
+  - Sonnet 4 provides better performance and reliability for TDD validation
+  - Haiku remains available as an option but is no longer the default
+  - Updated `modules/models.yaml` default flag
+  - Updated fallback defaults in `install.py` (3 locations)
+  - Updated test expectations in `tests/test_install.py`
+  - Updated documentation example in `README.md`
+
+### Technical Details
+- Modified files: `modules/models.yaml`, `install.py`, `tests/test_install.py`, `README.md`
+- Backward compatibility maintained: existing installations and saved configurations unaffected
+- All model options remain available for selection during installation
+
 ## [3.2.0] - 2025-10-08
 
 ### Added

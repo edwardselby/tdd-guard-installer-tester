@@ -468,7 +468,7 @@ def load_models() -> List[Dict]:
     models_path = Path(__file__).parent / 'modules' / 'models.yaml'
     if not models_path.exists():
         print("Warning: models.yaml not found. Using default model.")
-        return [{"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "description": "Default model", "default": True}]
+        return [{"id": "claude-sonnet-4-0", "name": "Claude Sonnet 4.0", "description": "Default model", "default": True}]
 
     try:
         with open(models_path, 'r') as f:
@@ -495,11 +495,11 @@ def load_models() -> List[Dict]:
         if current_model:
             models.append(current_model)
 
-        return models if models else [{"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "description": "Default model", "default": True}]
+        return models if models else [{"id": "claude-sonnet-4-0", "name": "Claude Sonnet 4.0", "description": "Default model", "default": True}]
 
     except Exception as e:
         print(f"Warning: Failed to load models.yaml: {e}")
-        return [{"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "description": "Default model", "default": True}]
+        return [{"id": "claude-sonnet-4-0", "name": "Claude Sonnet 4.0", "description": "Default model", "default": True}]
 
 def load_last_config() -> Optional[Dict]:
     """Load the last configuration from generated/.last-config.json"""

@@ -89,8 +89,8 @@ Installing TDD Guard package...
 ✓ Successfully installed tdd-guard-pytest
 
 # 3. Configuration Wizard
-Model Selection: [*] Claude 3.5 Haiku (default)
-✓ Auto-including: Haiku JSON Formatting Fix
+Model Selection: [*] Claude Sonnet 4.0 (default)
+✓ Auto-including recommended modules
 
 Module Selection: Choose from 10 TDD modules
 [*] Test File Duplication Prevention
@@ -107,8 +107,9 @@ Files created: .claude/settings.local.json, .claude/tdd-guard/data/
 
 Next steps:
   1. cd /Users/dev/projects/my-api-project
-  2. Restart Claude Code to load new hooks
-  3. Start writing tests with TDD Guard protection!
+  2. **IMPORTANT**: Restart Claude Code to load new hooks
+  3. Enable TDD Guard: Run `tdd-guard on` in Claude Code
+  4. Start writing tests with TDD Guard protection!
 ```
 
 ## 🎛️ Command Line Options
@@ -396,6 +397,32 @@ remove_from_ignore:
 **Target Project** (after installation): Your project + `.claude/` (TDD Guard configuration) + `.venv/` (with tdd-guard-pytest installed)
 
 ## 🚫 Troubleshooting
+
+### ⚠️ IMPORTANT: After Installation
+
+**TDD Guard Not Blocking After Installation?**
+
+If TDD Guard hooks are running but not enforcing rules after installation:
+
+1. **Restart Claude Code** - This is critical for hooks to load properly
+   - Close and reopen Claude Code in the target project
+   - The new `.claude/settings.local.json` configuration needs a fresh session
+
+2. **Enable TDD Guard** - Ensure TDD Guard is active
+   ```
+   tdd-guard on
+   ```
+   - Run this command in Claude Code to confirm TDD Guard is enabled
+   - You should see: "TDD Guard enabled"
+
+3. **Verify Hook Configuration** - Check that hooks are loaded
+   - The hook should trigger on Write/Edit/MultiEdit operations
+   - If you see "Operation stopped by hook" but no blocking, restart Claude Code
+
+**Why This Happens:**
+- Claude Code caches hook configurations at startup
+- Changes to `.claude/settings.local.json` require a restart to take effect
+- The `CLAUDE_PROJECT_DIR` environment variable needs to be set by Claude Code
 
 ### Common Installation Issues
 

@@ -2,11 +2,11 @@ models:
   - id: "claude-3-5-haiku-20241022"
     name: "Claude 3.5 Haiku"
     description: "Fast, efficient model for quick TDD validation"
-    default: true
+    default: false
   - id: "claude-sonnet-4-0"
     name: "Claude Sonnet 4.0"
     description: "Balanced performance for comprehensive TDD analysis"
-    default: false
+    default: true
   - id: "claude-opus-4-1"
     name: "Claude Opus 4.1"
     description: "Most powerful model for complex TDD scenarios"
