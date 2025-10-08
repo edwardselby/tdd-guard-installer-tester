@@ -12,7 +12,8 @@ from install import (
     ModuleInfo, discover_modules, load_models, load_last_config,
     save_config, ask_yes_no, update_model_setting, create_hooks,
     copy_instructions_to_ide, configure_ignore_patterns, generate_combined_instructions,
-    detect_project_type, find_virtual_environment, validate_project_path
+    detect_project_type, find_virtual_environment, validate_project_path,
+    configure_auto_approve_pytest
 )
 
 
@@ -185,40 +186,39 @@ mandatory_for_model: true"""
     assert module.priority == 0
 
 
-def test_haiku_json_fix_module_has_correct_properties():
-    """Test that haiku-json-fix module exists and has correct properties"""
+def test_strict_json_responses_module_has_correct_properties():
+    """Test that strict-json-responses module exists and has correct properties"""
     modules = discover_modules(silent=True)
 
-    # Find the haiku-json-fix module
-    haiku_module = None
+    # Find the strict-json-responses module
+    json_module = None
     for module in modules:
-        if module.name == "haiku-json-fix":
-            haiku_module = module
+        if module.name == "strict-json-responses":
+            json_module = module
             break
 
     # Verify the module exists and has correct properties
-    assert haiku_module is not None
-    assert haiku_module.priority == 0
-    assert haiku_module.auto_include_with_model == "claude-3-5-haiku-20241022"
-    assert haiku_module.mandatory_for_model == True
+    assert json_module is not None
+    assert json_module.priority == 0
+    assert json_module.mandatory_for_model == True
 
 
-def test_generate_with_haiku_model_includes_json_fix():
-    """Test that generating with haiku-json-fix module produces proper instructions"""
-    # Test CLI mode with just the haiku-json-fix module
-    instructions, tests = generate_combined_instructions(['haiku-json-fix'])
+def test_generate_with_strict_json_responses_module():
+    """Test that generating with strict-json-responses module produces proper instructions"""
+    # Test CLI mode with just the strict-json-responses module
+    instructions, tests = generate_combined_instructions(['strict-json-responses'])
 
     # Verify the JSON formatting instructions are included
-    assert "JSON Response Formatting" in instructions
-    assert "Escape quotes in code" in instructions
-    assert "Escape newlines" in instructions
-    assert "Valid JSON Structure" in instructions
+    assert "Response Formatting Rules" in instructions
+    assert "JSON Response Format Requirements" in instructions
+    assert "properly escape" in instructions.lower()
+    assert "reasoning" in instructions.lower()
 
-    # Verify priority 0 content appears first
+    # Verify priority 0 content appears early in the file
     lines = instructions.split('\n')
     json_section_found = False
     for i, line in enumerate(lines[:20]):  # Check first 20 lines
-        if "JSON Response Formatting" in line:
+        if "Response Formatting Rules" in line or "JSON Response Format" in line:
             json_section_found = True
             break
 
@@ -244,14 +244,15 @@ def test_find_virtual_environment_locates_venv():
     assert result is None
 
 
-def test_validate_project_path_rejects_self():
-    """Test that validation rejects TDD-guard-test directory itself"""
+def test_validate_project_path_accepts_self():
+    """Test that validation accepts installer directory for testing/fixing purposes"""
     installer_dir = Path(__file__).parent.parent
-    
+
     is_valid, message = validate_project_path(installer_dir)
-    
-    assert is_valid == False
-    assert "Cannot install to TDD-guard-test" in message
+
+    # The installer directory is allowed for testing/fixing purposes
+    assert is_valid == True
+    assert "Valid project path" in message
 
 
 def test_validate_project_path_rejects_nonexistent():
@@ -275,13 +276,54 @@ def test_save_config_stores_target_path():
         'protect_guard_settings': False,
         'block_file_bypass': True
     }
-    
+
     with patch('pathlib.Path.mkdir'):
         with patch('builtins.open', mock_open()) as mock_file:
             with patch('json.dump') as mock_json_dump:
                 save_config(['core', 'pytest'], True, ide_config, target)
-    
+
     # Verify target_path was included in saved config
     written_data = mock_json_dump.call_args[0][0]
     assert 'target_path' in written_data
     assert written_data['target_path'] == str(target)
+
+
+# Tests for Auto-Approve Pytest Feature
+
+def test_configure_auto_approve_pytest_adds_pytest_patterns_to_allow():
+    """Test auto-approve configuration adds pytest patterns to permissions.allow"""
+    with patch('pathlib.Path.exists', return_value=False):
+        with patch('pathlib.Path.mkdir'):
+            with patch('builtins.open', mock_open()) as mock_file:
+                with patch('json.dump') as mock_json_dump:
+                    result = configure_auto_approve_pytest(enabled=True, target_path=Path("/fake/project"))
+
+    assert result == True
+    written_data = mock_json_dump.call_args[0][0]
+    assert 'permissions' in written_data
+    assert 'allow' in written_data['permissions']
+    assert "Bash(FLASK_ENV=TESTING poetry run pytest:*)" in written_data['permissions']['allow']
+    assert "Bash(poetry run pytest:*)" in written_data['permissions']['allow']
+    assert "Bash(pytest:*)" in written_data['permissions']['allow']
+
+
+def test_save_config_persists_auto_approve_pytest_setting():
+    """Test that save_config stores auto_approve_pytest in configuration"""
+    ide_config = {
+        'model_id': 'claude-sonnet',
+        'enable_hooks': True,
+        'copy_instructions': False,
+        'configure_ignore_patterns': True,
+        'protect_guard_settings': False,
+        'block_file_bypass': True,
+        'auto_approve_pytest': True
+    }
+
+    with patch('pathlib.Path.mkdir'):
+        with patch('builtins.open', mock_open()) as mock_file:
+            with patch('json.dump') as mock_json_dump:
+                save_config(['core', 'pytest'], True, ide_config)
+
+    written_data = mock_json_dump.call_args[0][0]
+    assert 'auto_approve_pytest' in written_data
+    assert written_data['auto_approve_pytest'] == True

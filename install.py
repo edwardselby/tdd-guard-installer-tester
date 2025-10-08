@@ -526,7 +526,8 @@ def save_config(selected_modules: List[str], generate_tests: bool, ide_config: D
         'copy_instructions': ide_config.get('copy_instructions', False),
         'configure_ignore_patterns': ide_config.get('configure_ignore_patterns', False),
         'protect_guard_settings': ide_config.get('protect_guard_settings', True),
-        'block_file_bypass': ide_config.get('block_file_bypass', False)
+        'block_file_bypass': ide_config.get('block_file_bypass', False),
+        'auto_approve_pytest': ide_config.get('auto_approve_pytest', False)
     }
 
     try:
@@ -756,6 +757,51 @@ def configure_enforcement(protect_settings: bool, block_bypass: bool, target_pat
         print(f"Warning: Failed to configure enforcement: {e}")
         return False
 
+def configure_auto_approve_pytest(enabled: bool, target_path: Path) -> bool:
+    """Add pytest patterns to permissions.allow in .claude/settings.local.json"""
+    if not enabled:
+        return True
+
+    settings_path = target_path / '.claude' / 'settings.local.json'
+
+    try:
+        # Create .claude directory if it doesn't exist
+        settings_path.parent.mkdir(exist_ok=True)
+
+        # Load existing settings or create default structure
+        if settings_path.exists():
+            with open(settings_path, 'r') as f:
+                settings = json.load(f)
+        else:
+            settings = {"permissions": {"allow": [], "deny": [], "ask": []}, "env": {}}
+
+        # Ensure permissions structure exists
+        if 'permissions' not in settings:
+            settings['permissions'] = {"allow": [], "deny": [], "ask": []}
+        if 'allow' not in settings['permissions']:
+            settings['permissions']['allow'] = []
+
+        # Add pytest patterns if not already present
+        pytest_patterns = [
+            "Bash(FLASK_ENV=TESTING poetry run pytest:*)",
+            "Bash(poetry run pytest:*)",
+            "Bash(pytest:*)"
+        ]
+
+        for pattern in pytest_patterns:
+            if pattern not in settings['permissions']['allow']:
+                settings['permissions']['allow'].append(pattern)
+
+        # Write back to file
+        with open(settings_path, 'w') as f:
+            json.dump(settings, f, indent=2)
+
+        return True
+
+    except Exception as e:
+        print(f"Warning: Failed to configure auto-approve for pytest: {e}")
+        return False
+
 def validate_generated_file(file_path: Path, estimated_lines: int, file_type: str = "instructions") -> bool:
     """Validate that generated file matches estimated line count"""
     if not file_path.exists():
@@ -793,7 +839,7 @@ def validate_generated_file(file_path: Path, estimated_lines: int, file_type: st
         print(f"VALIDATION ERROR: Could not validate {file_type} file: {e}")
         return False
 
-def run_wizard(modules: List[ModuleInfo]) -> Tuple[List[str], bool, int, Dict]:
+def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None) -> Tuple[List[str], bool, int, Dict]:
     """Run the interactive module selection wizard with Claude IDE integration"""
     print("TDD Guard Configuration Wizard")
     print("=" * 50)
@@ -807,7 +853,8 @@ def run_wizard(modules: List[ModuleInfo]) -> Tuple[List[str], bool, int, Dict]:
         'copy_instructions': False,
         'configure_ignore_patterns': False,
         'protect_guard_settings': True,
-        'block_file_bypass': False
+        'block_file_bypass': False,
+        'auto_approve_pytest': False
     }
 
     # Ask about loading previous config
@@ -823,7 +870,8 @@ def run_wizard(modules: List[ModuleInfo]) -> Tuple[List[str], bool, int, Dict]:
                 'copy_instructions': last_config.get('copy_instructions', False),
                 'configure_ignore_patterns': last_config.get('configure_ignore_patterns', False),
                 'protect_guard_settings': last_config.get('protect_guard_settings', True),
-                'block_file_bypass': last_config.get('block_file_bypass', False)
+                'block_file_bypass': last_config.get('block_file_bypass', False),
+                'auto_approve_pytest': last_config.get('auto_approve_pytest', False)
             }
             # Skip all wizard questions, return loaded config
             estimated_lines = sum(m.line_count for m in modules if m.name in selected_module_names)
@@ -913,6 +961,13 @@ def run_wizard(modules: List[ModuleInfo]) -> Tuple[List[str], bool, int, Dict]:
     ide_config['protect_guard_settings'] = ask_yes_no("Enable Guard Settings Protection? (Prevents agents from reading TDD Guard config)", True)
     ide_config['block_file_bypass'] = ask_yes_no("Block File Operation Bypass? (Prevents shell commands that bypass TDD validation)", False)
     print()
+
+    # Auto-Approve Pytest (only for Flask projects with pytest module)
+    if project_type == "Python - Flask" and "pytest" in selected_modules:
+        print("Test Automation:")
+        print("-" * 40)
+        ide_config['auto_approve_pytest'] = ask_yes_no("Enable automatic approval for pytest commands?", True)
+        print()
 
     # Ask about test generation
     generate_tests = ask_yes_no("Generate test scenarios?", True)
@@ -1025,12 +1080,16 @@ def main():
     # PHASE 5.1: Project Selection Step
     # Only do project selection for wizard mode (not CLI mode)
     target_path = None
+    project_type = None
     if not args.list and not args.all and not args.modules:
         target_path = select_target_project()
         if not target_path:
             print()
             print("Installation cancelled. No target project selected.")
             sys.exit(0)
+
+        # Detect project type for conditional features
+        project_type = detect_project_type(target_path)
 
         # Install TDD Guard package
         package_installed = install_tdd_guard_package(target_path)
@@ -1087,7 +1146,7 @@ def main():
         estimated_lines = sum(m.line_count for m in available_modules if m.name in selected_modules)
     else:
         # Run wizard (default behavior)
-        selected_modules, generate_tests, estimated_lines, ide_config = run_wizard(available_modules)
+        selected_modules, generate_tests, estimated_lines, ide_config = run_wizard(available_modules, project_type)
 
     # Generate combined content
     instructions, tests = generate_combined_instructions(selected_modules)
@@ -1133,9 +1192,12 @@ def main():
         # Get selected module objects for ignore patterns
         selected_module_objects = [m for m in available_modules if m.name in selected_modules]
         ide_results['ignore_patterns'] = configure_ignore_patterns(ide_config['configure_ignore_patterns'], selected_module_objects, target_path)
+
+        # Configure pytest auto-approval
+        ide_results['auto_approve_pytest'] = configure_auto_approve_pytest(ide_config['auto_approve_pytest'], target_path)
     else:
         # CLI mode without target_path - skip IDE integration
-        ide_results = {'model': False, 'hooks': False, 'instructions': False, 'ignore_patterns': False}
+        ide_results = {'model': False, 'hooks': False, 'instructions': False, 'ignore_patterns': False, 'auto_approve_pytest': False}
 
     # Enforcement Configuration (only if target_path is set)
     if target_path:
@@ -1197,6 +1259,11 @@ def main():
             print(f"Ignore patterns: Removed {removed_list} (TDD Guard will now validate these files)")
         else:
             print(f"Ignore patterns: {patterns_status}")
+
+    # Pytest Auto-Approval Results
+    if ide_config['auto_approve_pytest']:
+        auto_approve_status = "Enabled for pytest commands" if ide_results.get('auto_approve_pytest') else "Failed to enable"
+        print(f"Auto-approve pytest: {auto_approve_status}")
 
     # Enforcement Configuration Results
     if ide_config['protect_guard_settings'] or ide_config['block_file_bypass']:

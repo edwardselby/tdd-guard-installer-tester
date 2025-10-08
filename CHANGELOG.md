@@ -5,6 +5,37 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2025-10-08
+
+### Added
+- **Automatic Pytest Command Approval**: Flask projects with pytest module now support automatic test command approval
+  - Adds pytest patterns to `permissions.allow` in `.claude/settings.local.json`
+  - Auto-approves: `FLASK_ENV=TESTING poetry run pytest`, `poetry run pytest`, and `pytest` commands
+  - Only prompts when project type is Flask and pytest module is selected
+  - Persists setting in `.last-config.json` for configuration restoration
+  - Displays approval status in installation results
+
+### Enhanced
+- **Wizard Flow**: Added conditional "Test Automation" step for Flask/pytest projects
+- **Project Type Detection**: Enhanced to pass project type through wizard workflow
+- **Configuration Management**: Extended IDE config structure with `auto_approve_pytest` field
+- **Installation Results**: Added pytest auto-approval status to summary output
+
+### Technical Improvements
+- Added `configure_auto_approve_pytest()` function following existing IDE integration pattern
+- Updated `run_wizard()` to accept optional `project_type` parameter
+- Enhanced `save_config()` and config loading to persist pytest approval preference
+- Comprehensive test coverage with 2 new tests for auto-approval feature
+
+### Files Enhanced
+- `install.py` - Auto-approve pytest configuration (Lines 759-802, 917-922, 1037, 1138, 1201-1204)
+- `tests/test_install.py` - Test coverage for pytest auto-approval (Lines 292-328)
+- `.claude/settings.local.json` (in target projects) - Pytest command permissions
+
+### Tests
+- Fixed 3 pre-existing test failures to match current codebase
+- All 20 tests passing (18 original + 2 new pytest auto-approval tests)
+
 ## [3.1.0] - 2025-10-01
 
 ### Added
