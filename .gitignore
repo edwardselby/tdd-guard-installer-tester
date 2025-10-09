@@ -63,13 +63,13 @@ Thumbs.db
 # Claude Code local settings (contains API keys and personal config)
 .claude/
 
-# Generated files (created by install.py for current user)
-generated/.last-config.json
-generated/instructions.md
-generated/tests.md
+# Generated directory - keep directory but ignore all contents except .gitkeep
+generated/*
+!generated/.gitkeep
 
-# Mock/test applications (testing artifacts)
-mock_application/
+# Mock/test application - keep directory but ignore all contents except .gitkeep
+mock_application/*
+!mock_application/.gitkeep
 
 # Documentation drafts (work in progress)
 docs/
