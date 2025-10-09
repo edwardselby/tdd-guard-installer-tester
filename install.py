@@ -356,91 +356,106 @@ def discover_projects() -> List[Dict]:
 # ============================================================================
 
 def select_target_project() -> Optional[Path]:
-    """Interactive project selection with auto-discovery"""
-    print("\n" + "=" * 50)
-    print("Target Project Selection")
-    print("=" * 50)
+    """Interactive project selection with auto-discovery using Rich UI"""
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.prompt import Prompt
+
+    console = get_console()
+
+    # Welcome header
+    header_text = """[bold cyan]Target Project Selection[/bold cyan]
+[dim]Select which project to install TDD Guard into[/dim]"""
+    console.print(Panel(header_text, style="bold magenta"))
+    console.print()
 
     projects = discover_projects()
 
     if not projects:
-        print("\nNo compatible projects found in parent directory.")
-        print("Make sure you have cloned TDD-guard-test into your projects directory.")
-        print("\nWould you like to specify a custom path? (y/n): ", end='')
-        response = input().strip().lower()
-        if response == 'y':
-            custom_path = input("\nEnter project path: ").strip()
+        console.print("[yellow]⚠[/yellow]  No compatible projects found in parent directory.")
+        console.print("[dim]Make sure you have cloned TDD-guard-test into your projects directory.[/dim]")
+        console.print()
+
+        if ask_yes_no("Would you like to specify a custom path?", False):
+            custom_path = Prompt.ask("\n[cyan]Enter project path[/cyan]")
             project_path = Path(custom_path).expanduser().resolve()
             is_valid, message = validate_project_path(project_path)
             if is_valid:
                 return project_path
             else:
-                print(f"\n❌ Invalid path: {message}")
+                console.print(f"\n[red]✗[/red] Invalid path: {message}")
                 return None
         return None
 
-    print(f"\nDiscovered {len(projects)} compatible project(s) in parent directory:\n")
+    console.print(f"[green]✓[/green] Discovered {len(projects)} compatible project(s)\n")
+
+    # Create Rich table for projects
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Project Name", style="cyan")
+    table.add_column("Type", style="yellow")
+    table.add_column("Virtual Env", style="green")
+    table.add_column("TDD Guard", style="blue")
 
     for i, project in enumerate(projects, 1):
-        print(f"  {i}. {project['name']:30} ({project['type']})")
-        print(f"     {str(project['path'])}")
-
         venv_status = "✓ Found" if project['venv'] else "✗ Not found"
         if project['venv']:
             venv_name = project['venv'].parent.parent.name
             venv_status += f" ({venv_name})"
-        print(f"     Virtual env: {venv_status}")
 
-        tdd_status = "⚠  Already installed" if project['has_tdd_guard'] else "Not installed"
-        print(f"     TDD Guard: {tdd_status}")
-        print()
+        tdd_status = "⚠ Installed" if project['has_tdd_guard'] else "Not installed"
 
-    print(f"  {len(projects) + 1}. [Custom Path] - Specify a different project location")
-    print()
+        table.add_row(
+            str(i),
+            project['name'],
+            project['type'],
+            venv_status,
+            tdd_status
+        )
+
+    console.print(table)
+    console.print(f"\n  {len(projects) + 1}. [yellow][Custom Path][/yellow] - Specify a different location")
+    console.print()
 
     while True:
         try:
-            choice = input(f"Select target project [1-{len(projects) + 1}]: ").strip()
-
-            if not choice:
-                print("Installation cancelled.")
-                return None
+            choice = Prompt.ask(
+                f"[cyan]Select target project[/cyan]",
+                choices=[str(i) for i in range(1, len(projects) + 2)],
+                default="1"
+            )
 
             choice_num = int(choice)
 
             if choice_num == len(projects) + 1:
-                custom_path = input("\nEnter project path: ").strip()
+                custom_path = Prompt.ask("\n[cyan]Enter project path[/cyan]")
                 project_path = Path(custom_path).expanduser().resolve()
                 is_valid, message = validate_project_path(project_path)
                 if is_valid:
                     return project_path
                 else:
-                    print(f"\n❌ Invalid path: {message}")
+                    console.print(f"\n[red]✗[/red] Invalid path: {message}")
                     continue
 
             if 1 <= choice_num <= len(projects):
                 selected = projects[choice_num - 1]
-                print(f"\nSelected: {selected['name']}")
-                print(f"Path: {selected['path']}")
-                print(f"Type: {selected['type']}")
+                console.print(f"\n[green]✓[/green] Selected: [cyan]{selected['name']}[/cyan]")
+                console.print(f"  Path: {selected['path']}")
+                console.print(f"  Type: {selected['type']}")
 
                 if selected['has_tdd_guard']:
-                    print("\n⚠  Warning: This project already has TDD Guard installed.")
-                    print("Continuing will overwrite existing configuration.")
+                    console.print("\n[yellow]⚠  Warning:[/yellow] This project already has TDD Guard installed.")
+                    console.print("  Continuing will overwrite existing configuration.")
 
-                confirm = input("\nContinue with this project? [*] Yes  [ ] No (y/n): ").strip().lower()
-                if confirm in ['y', 'yes', '']:
+                if ask_yes_no("\nContinue with this project?", True):
+                    console.print()
                     return selected['path']
                 else:
-                    print("\nInstallation cancelled.")
+                    console.print("\n[red]✗[/red] Installation cancelled.")
                     return None
-            else:
-                print(f"Please enter a number between 1 and {len(projects) + 1}")
 
-        except ValueError:
-            print("Please enter a valid number")
         except KeyboardInterrupt:
-            print("\n\nInstallation cancelled.")
+            console.print("\n\n[red]✗[/red] Installation cancelled.")
             return None
 
 # ============================================================================

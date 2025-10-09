@@ -122,7 +122,7 @@ def test_run_wizard_with_mode_parameter():
         ModuleInfo("module1", Path("/fake1"), silent=True)
     ]
 
-    with patch('install.select_wizard_mode', return_value='express') as mock_mode:
+    with patch('install.load_last_config', return_value=None):
         with patch('install.get_express_mode_config') as mock_config:
             mock_config.return_value = {
                 'selected_modules': ['module1'],
