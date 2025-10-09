@@ -172,3 +172,34 @@ def test_select_from_exclusive_group_uses_rich():
             # Should print Rich components
             mock_console.return_value.print.assert_called()
             assert result.name == "mod1"
+
+
+def test_select_standalone_modules_uses_rich():
+    """Test standalone module selection uses Rich table and Confirm"""
+    from install import select_standalone_modules
+
+    # Mock ModuleInfo objects
+    mod1 = MagicMock()
+    mod1.name = "mod1"
+    mod1.display_name = "Module 1"
+    mod1.description = "Test module 1"
+    mod1.line_count = 100
+    mod1.default_enabled = True
+
+    mod2 = MagicMock()
+    mod2.name = "mod2"
+    mod2.display_name = "Module 2"
+    mod2.description = "Test module 2"
+    mod2.line_count = 200
+    mod2.default_enabled = False
+
+    modules = [mod1, mod2]
+
+    with patch('install.get_console') as mock_console:
+        with patch('rich.prompt.Confirm.ask', side_effect=[True, False]):
+            selected = select_standalone_modules(modules)
+
+            # Should print Rich components
+            mock_console.return_value.print.assert_called()
+            assert len(selected) == 1
+            assert selected[0].name == "mod1"

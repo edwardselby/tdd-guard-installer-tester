@@ -20,5 +20,5 @@
   "configure_ignore_patterns": true,
   "protect_guard_settings": true,
   "block_file_bypass": false,
-  "auto_approve_pytest": false
+  "auto_approve_pytest": true
 }

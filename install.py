@@ -298,6 +298,54 @@ def select_from_exclusive_group(group_name: str, modules: List['ModuleInfo']) ->
 
     return selected_module
 
+def select_standalone_modules(modules: List['ModuleInfo']) -> List['ModuleInfo']:
+    """Select multiple standalone modules using Rich UI (checkbox style)"""
+    from rich.table import Table
+    from rich.panel import Panel
+    from rich.prompt import Confirm
+
+    console = get_console()
+
+    # Display header
+    header = "Additional Modules (ordered by priority)"
+    panel = Panel(header, style="bold cyan", width=80)
+    console.print(panel)
+    console.print()
+
+    # Create table showing all modules
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Module", style="cyan")
+    table.add_column("Description", style="dim")
+    table.add_column("Lines", justify="right", width=10)
+    table.add_column("Default", justify="center", width=10)
+
+    for module in modules:
+        default_marker = "[green]✓[/green]" if module.default_enabled else ""
+        table.add_row(
+            module.display_name,
+            module.description,
+            f"+{module.line_count}",
+            default_marker
+        )
+
+    console.print(table)
+    console.print()
+
+    # Ask for each module individually (checkbox style)
+    selected = []
+    for module in modules:
+        default_choice = module.default_enabled
+        question = f"Include [cyan]{module.display_name}[/cyan]?"
+
+        if Confirm.ask(question, default=default_choice):
+            selected.append(module)
+            console.print(f"  [green]✓[/green] Added: {module.display_name}")
+        else:
+            console.print(f"  [dim]○[/dim] Skipped: {module.display_name}")
+
+    console.print()
+    return selected
+
 # ============================================================================
 # Phase 1: Project Discovery & Detection Functions
 # ============================================================================
@@ -1197,29 +1245,12 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
         selected_modules.append(selected.name)
         total_lines += selected.line_count
 
-    # Handle standalone modules (checkbox selection)
+    # Handle standalone modules (checkbox selection with Rich UI)
     if standalone_modules:
-        print("Additional Modules (ordered by priority):")
-        print("-" * 40)
-
-        for module in standalone_modules:
-            # Display module info
-            status_char = "*" if module.default_enabled else " "
-            print(f"[{status_char}] {module.display_name} (+{module.line_count} lines)")
-            print(f"    {module.description}")
-
-            # Ask for selection
-            if ask_yes_no("Include this module?", module.default_enabled):
-                selected_modules.append(module.name)
-                total_lines += module.line_count
-                print(f"    Selected (Running total: {total_lines}/300 lines)")
-
-                # Warn if approaching limit
-                if total_lines > 300:
-                    print(f"    WARNING: Exceeds 300-line limit! Current: {total_lines} lines")
-            else:
-                print(f"    Skipped (Running total: {total_lines}/300 lines)")
-            print()
+        selected_standalone = select_standalone_modules(standalone_modules)
+        for module in selected_standalone:
+            selected_modules.append(module.name)
+            total_lines += module.line_count
 
     # Claude IDE Integration
     print("Claude IDE Integration:")
