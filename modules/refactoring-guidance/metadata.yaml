@@ -1,0 +1,4 @@
+name: "Refactoring Guidance"
+description: "Enforces safe code elimination through deprecation-first protocol (RECOMMENDED for DRY refactoring)"
+default: yes
+priority: 3

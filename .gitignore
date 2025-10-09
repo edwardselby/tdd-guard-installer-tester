@@ -61,10 +61,18 @@ Thumbs.db
 .env.production.local
 
 # Claude Code local settings (contains API keys and personal config)
-.claude/settings.local.json
+.claude/
 
-# TDD Guard data (contains session-specific data)
-.claude/tdd-guard/data/
+# Generated files (created by install.py for current user)
+generated/.last-config.json
+generated/instructions.md
+generated/tests.md
+
+# Mock/test applications (testing artifacts)
+mock_application/
+
+# Documentation drafts (work in progress)
+docs/
 
 # Logs
 *.log
