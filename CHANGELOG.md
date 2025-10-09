@@ -5,6 +5,36 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2025-10-09
+
+### Added
+- **Exclusive Core Modules**: Users can now choose TDD strictness level during installation
+  - **Core TDD (Strict)**: One test at a time, maximum discipline (default, STRONGLY RECOMMENDED)
+  - **Core TDD (Flexible)**: 2-3 similar tests allowed for efficiency
+  - Mutually exclusive selection via new `exclusive_group` metadata field
+  - Radio selection UI in wizard for exclusive groups ("SELECT ONE" interface)
+
+### Changed
+- **Module Selection UX**: Enhanced wizard interface
+  - Exclusive groups display as radio buttons (select ONE from group)
+  - Standalone modules continue as checkboxes (select multiple)
+  - Groups sorted and displayed before standalone modules
+
+### Technical Details
+- Added `exclusive_group` property to `ModuleInfo` class (install.py:448)
+- Updated `run_wizard()` with exclusive group selection logic (install.py:928-998)
+- Created `modules/core-strict/` (renamed from `modules/core/`)
+- Created `modules/core-flexible/` (new module with flexible TDD rules)
+- All 20 tests passing - no breaking changes to existing functionality
+
+### Files Modified/Created
+- Created: `modules/core-flexible/instructions.md` (24 lines)
+- Created: `modules/core-flexible/metadata.yaml`
+- Created: `modules/core-flexible/test-scenarios.md`
+- Renamed: `modules/core/` → `modules/core-strict/`
+- Modified: `modules/core-strict/metadata.yaml` (added exclusive_group field)
+- Modified: `install.py` (ModuleInfo property + wizard logic)
+
 ## [3.3.1] - 2025-10-08
 
 ### Fixed

@@ -444,6 +444,10 @@ class ModuleInfo:
     def mandatory_for_model(self):
         return self.metadata.get('mandatory_for_model', False)
 
+    @property
+    def exclusive_group(self):
+        return self.metadata.get('exclusive_group', None)
+
 def discover_modules(silent: bool = False) -> List[ModuleInfo]:
     """Auto-discover all modules in the modules directory"""
     modules_dir = Path(__file__).parent / 'modules'
@@ -921,31 +925,77 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None) ->
         print()
 
     # Module Selection (now AFTER model selection)
-    print("Module Selection (ordered by priority):")
-    print("-" * 40)
+    # Separate modules into exclusive groups and standalone modules
+    exclusive_groups = {}
+    standalone_modules = []
 
     for module in modules:
         # Skip modules that were auto-included for the selected model
         if module.name in model_specific_modules:
             continue
 
-        # Display module info
-        status_char = "*" if module.default_enabled else " "
-        print(f"[{status_char}] {module.display_name} (+{module.line_count} lines)")
-        print(f"    {module.description}")
-
-        # Ask for selection
-        if ask_yes_no("Include this module?", module.default_enabled):
-            selected_modules.append(module.name)
-            total_lines += module.line_count
-            print(f"    Selected (Running total: {total_lines}/300 lines)")
-
-            # Warn if approaching limit
-            if total_lines > 300:
-                print(f"    WARNING: Exceeds 300-line limit! Current: {total_lines} lines")
+        if module.exclusive_group:
+            group_name = module.exclusive_group
+            if group_name not in exclusive_groups:
+                exclusive_groups[group_name] = []
+            exclusive_groups[group_name].append(module)
         else:
-            print(f"    Skipped (Running total: {total_lines}/300 lines)")
+            standalone_modules.append(module)
+
+    # Handle exclusive groups first (radio selection)
+    for group_name, group_modules in sorted(exclusive_groups.items()):
+        print(f"{group_name.upper()} - Select ONE:")
+        print("-" * 40)
+
+        for i, module in enumerate(group_modules, 1):
+            marker = "*" if module.default_enabled else " "
+            print(f"  {i}. [{marker}] {module.display_name} (+{module.line_count} lines)")
+            print(f"      {module.description}")
+
+        # Get selection (default or user input)
+        default_idx = next((i for i, m in enumerate(group_modules) if m.default_enabled), 0)
+        while True:
+            choice = input(f"Select option [1-{len(group_modules)}] (press Enter for default): ").strip()
+            if not choice:
+                selected = group_modules[default_idx]
+                break
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(group_modules):
+                    selected = group_modules[idx]
+                    break
+            except ValueError:
+                pass
+            print(f"Please enter 1-{len(group_modules)}")
+
+        selected_modules.append(selected.name)
+        total_lines += selected.line_count
+        print(f"✓ Selected: {selected.display_name}")
         print()
+
+    # Handle standalone modules (checkbox selection)
+    if standalone_modules:
+        print("Additional Modules (ordered by priority):")
+        print("-" * 40)
+
+        for module in standalone_modules:
+            # Display module info
+            status_char = "*" if module.default_enabled else " "
+            print(f"[{status_char}] {module.display_name} (+{module.line_count} lines)")
+            print(f"    {module.description}")
+
+            # Ask for selection
+            if ask_yes_no("Include this module?", module.default_enabled):
+                selected_modules.append(module.name)
+                total_lines += module.line_count
+                print(f"    Selected (Running total: {total_lines}/300 lines)")
+
+                # Warn if approaching limit
+                if total_lines > 300:
+                    print(f"    WARNING: Exceeds 300-line limit! Current: {total_lines} lines")
+            else:
+                print(f"    Skipped (Running total: {total_lines}/300 lines)")
+            print()
 
     # Claude IDE Integration
     print("Claude IDE Integration:")

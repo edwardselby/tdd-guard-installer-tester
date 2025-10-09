@@ -1,4 +1,0 @@
-name: "Core TDD Workflow"
-description: "Enforces Red-Green-Refactor cycle and proper TDD timing (STRONGLY RECOMMENDED)"
-default: yes
-priority: 4

@@ -1,0 +1,5 @@
+name: "Core TDD (Strict)"
+description: "Strict TDD: One test at a time, maximum discipline (STRONGLY RECOMMENDED)"
+default: yes
+priority: 4
+exclusive_group: "core-tdd"

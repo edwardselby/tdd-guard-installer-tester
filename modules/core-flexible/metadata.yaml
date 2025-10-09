@@ -1,0 +1,5 @@
+name: "Core TDD (Flexible)"
+description: "Flexible TDD: 2-3 similar tests allowed for efficiency"
+default: no
+priority: 4
+exclusive_group: "core-tdd"
