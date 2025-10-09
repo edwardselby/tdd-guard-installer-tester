@@ -957,31 +957,17 @@ def validate_generated_file(file_path: Path, estimated_lines: int, file_type: st
 
 def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mode: Optional[str] = None) -> Tuple[List[str], bool, int, Dict]:
     """Run the interactive module selection wizard with Claude IDE integration"""
+    from rich.panel import Panel
 
-    # Handle express mode
-    if mode == 'express':
-        models = load_models()
-        config = get_express_mode_config(modules, models)
-        estimated_lines = sum(m.line_count for m in modules if m.name in config['selected_modules'])
-        return config['selected_modules'], config['generate_tests'], estimated_lines, config['ide_config']
+    console = get_console()
 
-    print("TDD Guard Configuration Wizard")
-    print("=" * 50)
-    print()
+    # Welcome banner
+    welcome_text = """[bold cyan]TDD Guard Configuration Wizard[/bold cyan]
+[dim]Configure TDD Guard for your project with intelligent defaults[/dim]"""
+    console.print(Panel(welcome_text, style="bold magenta"))
+    console.print()
 
-    selected_modules = []
-    total_lines = 0
-    ide_config = {
-        'model_id': None,
-        'enable_hooks': False,
-        'copy_instructions': False,
-        'configure_ignore_patterns': False,
-        'protect_guard_settings': True,
-        'block_file_bypass': False,
-        'auto_approve_pytest': False
-    }
-
-    # Ask about loading previous config
+    # Ask about loading previous config first
     last_config = load_last_config()
     if last_config:
         if ask_yes_no("Load previous configuration?", True):
@@ -999,7 +985,64 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
             }
             # Skip all wizard questions, return loaded config
             estimated_lines = sum(m.line_count for m in modules if m.name in selected_module_names)
+            console.print("[green]✓ Configuration loaded[/green]")
+            console.print()
             return selected_module_names, generate_tests, estimated_lines, loaded_ide_config
+
+    # If mode not specified, prompt user to select
+    if mode is None:
+        mode = select_wizard_mode()
+        console.print()
+
+    # Handle express mode
+    if mode == 'express':
+        console.print("[cyan]Express mode:[/cyan] Using recommended defaults")
+        console.print()
+        models = load_models()
+        config = get_express_mode_config(modules, models)
+        estimated_lines = sum(m.line_count for m in modules if m.name in config['selected_modules'])
+        console.print(f"[green]✓[/green] Selected {len(config['selected_modules'])} modules with recommended settings")
+        console.print()
+        return config['selected_modules'], config['generate_tests'], estimated_lines, config['ide_config']
+
+    # Handle minimal mode
+    if mode == 'minimal':
+        console.print("[cyan]Minimal mode:[/cyan] Bare minimum configuration")
+        console.print()
+        # Just core module, default model, no extras
+        models = load_models()
+        default_model = next((m for m in models if m.get('default')), models[0] if models else None)
+
+        selected_modules = ['core-strict']  # Just the core strict module
+        ide_config = {
+            'model_id': default_model['id'] if default_model else None,
+            'enable_hooks': True,
+            'copy_instructions': True,
+            'configure_ignore_patterns': False,
+            'protect_guard_settings': True,
+            'block_file_bypass': False,
+            'auto_approve_pytest': False
+        }
+        estimated_lines = sum(m.line_count for m in modules if m.name in selected_modules)
+        console.print(f"[green]✓[/green] Configured with core TDD module only")
+        console.print()
+        return selected_modules, True, estimated_lines, ide_config
+
+    # Custom mode - full wizard with Rich UI
+    console.print("[cyan]Custom mode:[/cyan] Full control over all settings")
+    console.print()
+
+    selected_modules = []
+    total_lines = 0
+    ide_config = {
+        'model_id': None,
+        'enable_hooks': False,
+        'copy_instructions': False,
+        'configure_ignore_patterns': False,
+        'protect_guard_settings': True,
+        'block_file_bypass': False,
+        'auto_approve_pytest': False
+    }
 
     # REORDERED: Model Selection FIRST (before modules)
     print("Model Selection:")
