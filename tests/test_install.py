@@ -96,8 +96,8 @@ def test_save_config_persists_all_settings(mock_file, mock_json_dump, mock_mkdir
     assert written_data['block_file_bypass'] == True
 
 
-@patch('builtins.input', return_value='y')
-def test_ask_yes_no_accepts_valid_responses(mock_input):
+@patch('rich.prompt.Confirm.ask', return_value=True)
+def test_ask_yes_no_accepts_valid_responses(mock_confirm):
     """Test yes/no prompts handle valid user input correctly"""
     result = ask_yes_no("Test prompt", default=False)
 

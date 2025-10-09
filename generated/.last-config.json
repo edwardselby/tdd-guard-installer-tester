@@ -5,18 +5,20 @@
     "comment-violations",
     "quality-control",
     "fake-implementation",
+    "refactoring-guidance",
     "backend-frameworks",
     "core",
     "pytest",
     "advanced-evasion",
     "meta"
   ],
-  "generate_tests": true,
-  "target_path": "/Users/edward/PycharmProjects/tdd-guard-installer-tester",
-  "model_id": "claude-3-5-haiku-20241022",
+  "generate_tests": false,
+  "target_path": "/Users/edward/PycharmProjects/betslip-microservice",
+  "model_id": "claude-sonnet-4-0",
   "enable_hooks": true,
   "copy_instructions": true,
   "configure_ignore_patterns": true,
-  "protect_guard_settings": false,
-  "block_file_bypass": false
+  "protect_guard_settings": true,
+  "block_file_bypass": false,
+  "auto_approve_pytest": true
 }

@@ -59,6 +59,8 @@ import argparse
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+from rich.console import Console
+from rich.prompt import Confirm
 
 def simple_yaml_load(content: str) -> Dict:
     """Simple YAML parser for basic key: value pairs"""
@@ -79,6 +81,128 @@ def simple_yaml_load(content: str) -> Dict:
                 value = int(value)
             result[key] = value
     return result
+
+# ============================================================================
+# Rich Console Infrastructure
+# ============================================================================
+
+_console = None
+
+def get_console() -> Console:
+    """Get or create Rich console instance"""
+    global _console
+    if _console is None:
+        _console = Console()
+    return _console
+
+def print_step_header(title: str, step: int, total: int):
+    """Print a Rich Panel showing step progress"""
+    from rich.panel import Panel
+    console = get_console()
+    header_text = f"Step {step}/{total}: {title}"
+    panel = Panel(header_text, style="bold cyan")
+    console.print(panel)
+
+def print_modules_table(modules: List):
+    """Print a Rich Table displaying modules"""
+    from rich.table import Table
+    console = get_console()
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Module", style="cyan")
+    table.add_column("Lines", justify="right", style="green")
+    table.add_column("Description")
+
+    for i, module in enumerate(modules, 1):
+        table.add_row(
+            str(i),
+            module.display_name,
+            str(module.line_count),
+            module.description
+        )
+
+    console.print(table)
+
+def parse_module_selection(selection: str, max_count: int) -> List[int]:
+    """Parse user module selection string into list of indices"""
+    indices = []
+    parts = selection.split()
+
+    for part in parts:
+        part_lower = part.lower()
+
+        # Handle shortcuts
+        if part_lower == 'all':
+            return list(range(max_count))
+        elif part_lower in ['rec', 'recommended']:
+            # Will be handled by caller with module default_enabled flags
+            continue
+        elif part_lower == 'none':
+            return []
+        elif '-' in part:
+            # Handle ranges like "1-5"
+            try:
+                start, end = part.split('-')
+                start_num = int(start)
+                end_num = int(end)
+                for num in range(start_num, end_num + 1):
+                    if 1 <= num <= max_count and (num - 1) not in indices:
+                        indices.append(num - 1)
+            except ValueError:
+                pass
+        else:
+            # Handle simple numbers
+            try:
+                num = int(part)
+                if 1 <= num <= max_count and (num - 1) not in indices:
+                    indices.append(num - 1)
+            except ValueError:
+                pass
+
+    return indices
+
+def select_wizard_mode() -> str:
+    """Prompt user to select wizard mode"""
+    from rich.prompt import Prompt
+    from rich.panel import Panel
+
+    console = get_console()
+
+    modes_text = """[cyan]1.[/cyan] Express   - Quick setup with recommended defaults (~90 seconds faster)
+[cyan]2.[/cyan] Custom    - Full control over all settings
+[cyan]3.[/cyan] Minimal   - Bare minimum configuration"""
+
+    panel = Panel(modes_text, title="Wizard Mode", style="bold magenta")
+    console.print(panel)
+
+    choice = Prompt.ask("Select mode", choices=["1", "2", "3"], default="1")
+
+    mode_map = {"1": "express", "2": "custom", "3": "minimal"}
+    return mode_map[choice]
+
+def get_express_mode_config(modules: List, models: List[Dict]) -> Dict:
+    """Get express mode configuration with recommended defaults"""
+    selected_modules = [m.name for m in modules if m.default_enabled]
+    default_model = next((m for m in models if m.get('default')), models[0] if models else None)
+    model_id = default_model['id'] if default_model else None
+
+    ide_config = {
+        'model_id': model_id,
+        'enable_hooks': True,
+        'copy_instructions': True,
+        'configure_ignore_patterns': True,
+        'protect_guard_settings': True,
+        'block_file_bypass': False,
+        'auto_approve_pytest': True
+    }
+
+    return {
+        'selected_modules': selected_modules,
+        'model_id': model_id,
+        'ide_config': ide_config,
+        'generate_tests': True
+    }
 
 # ============================================================================
 # Phase 1: Project Discovery & Detection Functions
@@ -541,20 +665,8 @@ def save_config(selected_modules: List[str], generate_tests: bool, ide_config: D
         pass  # Silent fail for config saving
 
 def ask_yes_no(prompt: str, default: bool = True) -> bool:
-    """Ask a yes/no question with a default"""
-    if default:
-        suffix = "[*] Yes  [ ] No"
-    else:
-        suffix = "[ ] Yes  [*] No"
-    while True:
-        response = input(f"{prompt} {suffix} (y/n): ").strip().lower()
-        if not response:
-            return default
-        if response in ['y', 'yes']:
-            return True
-        if response in ['n', 'no']:
-            return False
-        print("Please enter 'y' or 'n'")
+    """Ask a yes/no question with a default using Rich Confirm"""
+    return Confirm.ask(prompt, default=default)
 
 def update_model_setting(model_id: str, target_path: Path) -> bool:
     """Update the TDD_GUARD_MODEL_VERSION in .claude/settings.local.json"""
@@ -843,8 +955,16 @@ def validate_generated_file(file_path: Path, estimated_lines: int, file_type: st
         print(f"VALIDATION ERROR: Could not validate {file_type} file: {e}")
         return False
 
-def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None) -> Tuple[List[str], bool, int, Dict]:
+def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mode: Optional[str] = None) -> Tuple[List[str], bool, int, Dict]:
     """Run the interactive module selection wizard with Claude IDE integration"""
+
+    # Handle express mode
+    if mode == 'express':
+        models = load_models()
+        config = get_express_mode_config(modules, models)
+        estimated_lines = sum(m.line_count for m in modules if m.name in config['selected_modules'])
+        return config['selected_modules'], config['generate_tests'], estimated_lines, config['ide_config']
+
     print("TDD Guard Configuration Wizard")
     print("=" * 50)
     print()

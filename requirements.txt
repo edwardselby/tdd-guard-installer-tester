@@ -8,6 +8,9 @@ pytest-cov>=4.0.0
 # TDD Guard integration
 tdd-guard-pytest>=0.1.2
 
+# Rich terminal UI
+rich>=13.7.0
+
 # Standard library modules (included with Python)
 # - pathlib (Python 3.4+)
 # - argparse (Python 3.2+)
