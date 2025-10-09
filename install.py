@@ -247,6 +247,57 @@ def select_model(models: List[Dict], step: int = 1, total: int = 5) -> Dict:
 
     return selected_model
 
+def select_from_exclusive_group(group_name: str, modules: List['ModuleInfo']) -> 'ModuleInfo':
+    """Select one module from an exclusive group using Rich UI"""
+    from rich.table import Table
+    from rich.panel import Panel
+    from rich.prompt import Prompt
+
+    console = get_console()
+
+    # Display group header
+    header = f"{group_name.upper()} - SELECT ONE"
+    panel = Panel(header, style="bold yellow", width=80)
+    console.print(panel)
+    console.print()
+
+    # Create table with radio button style
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Module", style="cyan")
+    table.add_column("Description", style="dim")
+    table.add_column("Lines", justify="right", width=10)
+    table.add_column("Default", justify="center", width=10)
+
+    default_idx = 0
+    for i, module in enumerate(modules, 1):
+        default_marker = "[green]●[/green]" if module.default_enabled else "[dim]○[/dim]"
+        if module.default_enabled:
+            default_idx = i
+
+        table.add_row(
+            str(i),
+            module.display_name,
+            module.description,
+            f"+{module.line_count}",
+            default_marker
+        )
+
+    console.print(table)
+    console.print()
+
+    choice = Prompt.ask(
+        f"[cyan]Select option[/cyan]",
+        choices=[str(i) for i in range(1, len(modules) + 1)],
+        default=str(default_idx) if default_idx else "1"
+    )
+
+    selected_module = modules[int(choice) - 1]
+    console.print(f"[green]✓[/green] Selected: [cyan]{selected_module.display_name}[/cyan]")
+    console.print()
+
+    return selected_module
+
 # ============================================================================
 # Phase 1: Project Discovery & Detection Functions
 # ============================================================================
@@ -1140,36 +1191,11 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
         else:
             standalone_modules.append(module)
 
-    # Handle exclusive groups first (radio selection)
+    # Handle exclusive groups first (radio selection with Rich UI)
     for group_name, group_modules in sorted(exclusive_groups.items()):
-        print(f"{group_name.upper()} - Select ONE:")
-        print("-" * 40)
-
-        for i, module in enumerate(group_modules, 1):
-            marker = "*" if module.default_enabled else " "
-            print(f"  {i}. [{marker}] {module.display_name} (+{module.line_count} lines)")
-            print(f"      {module.description}")
-
-        # Get selection (default or user input)
-        default_idx = next((i for i, m in enumerate(group_modules) if m.default_enabled), 0)
-        while True:
-            choice = input(f"Select option [1-{len(group_modules)}] (press Enter for default): ").strip()
-            if not choice:
-                selected = group_modules[default_idx]
-                break
-            try:
-                idx = int(choice) - 1
-                if 0 <= idx < len(group_modules):
-                    selected = group_modules[idx]
-                    break
-            except ValueError:
-                pass
-            print(f"Please enter 1-{len(group_modules)}")
-
+        selected = select_from_exclusive_group(group_name, group_modules)
         selected_modules.append(selected.name)
         total_lines += selected.line_count
-        print(f"✓ Selected: {selected.display_name}")
-        print()
 
     # Handle standalone modules (checkbox selection)
     if standalone_modules:

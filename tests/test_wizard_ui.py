@@ -153,3 +153,22 @@ def test_select_model_displays_rich_table():
             # Should print Rich table
             mock_console.return_value.print.assert_called()
             assert result['id'] == 'model1'
+
+
+def test_select_from_exclusive_group_uses_rich():
+    """Test exclusive group selection uses Rich panel and table"""
+    from install import select_from_exclusive_group, ModuleInfo
+    from pathlib import Path
+
+    modules = [
+        ModuleInfo("mod1", Path("/fake1"), silent=True),
+        ModuleInfo("mod2", Path("/fake2"), silent=True)
+    ]
+
+    with patch('install.get_console') as mock_console:
+        with patch('rich.prompt.Prompt.ask', return_value='1'):
+            result = select_from_exclusive_group("core-tdd", modules)
+
+            # Should print Rich components
+            mock_console.return_value.print.assert_called()
+            assert result.name == "mod1"
