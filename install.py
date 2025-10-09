@@ -173,7 +173,7 @@ def select_wizard_mode() -> str:
 [cyan]2.[/cyan] Custom    - Full control over all settings
 [cyan]3.[/cyan] Minimal   - Bare minimum configuration"""
 
-    panel = Panel(modes_text, title="Wizard Mode", style="bold magenta")
+    panel = Panel(modes_text, title="Wizard Mode", style="bold magenta", width=80)
     console.print(panel)
 
     choice = Prompt.ask("Select mode", choices=["1", "2", "3"], default="1")
@@ -203,6 +203,49 @@ def get_express_mode_config(modules: List, models: List[Dict]) -> Dict:
         'ide_config': ide_config,
         'generate_tests': True
     }
+
+def select_model(models: List[Dict], step: int = 1, total: int = 5) -> Dict:
+    """Select Claude AI model using Rich table"""
+    from rich.table import Table
+    from rich.prompt import Prompt
+
+    console = get_console()
+
+    print_step_header("Model Selection", step, total)
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Model", style="cyan")
+    table.add_column("Description", style="dim")
+    table.add_column("Default", justify="center", width=10)
+
+    default_idx = 0
+    for i, model in enumerate(models, 1):
+        default_marker = "[green]✓[/green]" if model.get('default') else ""
+        if model.get('default'):
+            default_idx = i
+
+        table.add_row(
+            str(i),
+            model['name'],
+            model['description'],
+            default_marker
+        )
+
+    console.print(table)
+    console.print()
+
+    choice = Prompt.ask(
+        f"[cyan]Select model[/cyan]",
+        choices=[str(i) for i in range(1, len(models) + 1)],
+        default=str(default_idx) if default_idx else "1"
+    )
+
+    selected_model = models[int(choice) - 1]
+    console.print(f"[green]✓[/green] Selected: [cyan]{selected_model['name']}[/cyan]")
+    console.print()
+
+    return selected_model
 
 # ============================================================================
 # Phase 1: Project Discovery & Detection Functions
@@ -366,7 +409,7 @@ def select_target_project() -> Optional[Path]:
     # Welcome header
     header_text = """[bold cyan]Target Project Selection[/bold cyan]
 [dim]Select which project to install TDD Guard into[/dim]"""
-    console.print(Panel(header_text, style="bold magenta"))
+    console.print(Panel(header_text, style="bold magenta", width=80))
     console.print()
 
     projects = discover_projects()
@@ -979,7 +1022,7 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
     # Welcome banner
     welcome_text = """[bold cyan]TDD Guard Configuration Wizard[/bold cyan]
 [dim]Configure TDD Guard for your project with intelligent defaults[/dim]"""
-    console.print(Panel(welcome_text, style="bold magenta"))
+    console.print(Panel(welcome_text, style="bold magenta", width=80))
     console.print()
 
     # Ask about loading previous config first
@@ -1059,33 +1102,10 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
         'auto_approve_pytest': False
     }
 
-    # REORDERED: Model Selection FIRST (before modules)
-    print("Model Selection:")
-    print("-" * 40)
+    # Model Selection using Rich UI
     models = load_models()
-    for i, model in enumerate(models, 1):
-        default_marker = " [*]" if model.get('default', False) else " [ ]"
-        print(f"  {i}.{default_marker} {model['name']} ({model['description']})")
-
-    default_model = next((m for m in models if m.get('default')), models[0])
-    while True:
-        try:
-            choice = input(f"Select model [1-{len(models)}] (press Enter for default): ").strip()
-            if not choice:
-                # Use default model
-                selected_model = default_model
-                break
-            choice_idx = int(choice) - 1
-            if 0 <= choice_idx < len(models):
-                selected_model = models[choice_idx]
-                break
-            print(f"Please enter a number between 1 and {len(models)}")
-        except ValueError:
-            print(f"Please enter a number between 1 and {len(models)}")
-
+    selected_model = select_model(models, step=1, total=5)
     ide_config['model_id'] = selected_model['id']
-    print(f"Selected: {selected_model['name']}")
-    print()
 
     # Auto-include model-specific modules BEFORE showing module selection
     model_specific_modules = []

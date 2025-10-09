@@ -135,3 +135,21 @@ def test_run_wizard_with_mode_parameter():
 
                 assert result is not None
                 mock_config.assert_called_once()
+
+
+def test_select_model_displays_rich_table():
+    """Test model selection uses Rich table instead of print"""
+    from install import select_model
+
+    models = [
+        {"id": "model1", "name": "Model 1", "description": "Test model", "default": True},
+        {"id": "model2", "name": "Model 2", "description": "Another model", "default": False}
+    ]
+
+    with patch('install.get_console') as mock_console:
+        with patch('rich.prompt.Prompt.ask', return_value='1'):
+            result = select_model(models, step=1, total=5)
+
+            # Should print Rich table
+            mock_console.return_value.print.assert_called()
+            assert result['id'] == 'model1'

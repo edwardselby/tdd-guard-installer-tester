@@ -1,5 +1,6 @@
 {
   "selected_modules": [
+    "core-flexible",
     "strict-json-responses",
     "test-duplication",
     "comment-violations",
@@ -7,18 +8,17 @@
     "fake-implementation",
     "refactoring-guidance",
     "backend-frameworks",
-    "core",
     "pytest",
     "advanced-evasion",
     "meta"
   ],
   "generate_tests": false,
-  "target_path": "/Users/edward/PycharmProjects/betslip-microservice",
+  "target_path": "/Users/edward/PycharmProjects/football-statistics-microservice",
   "model_id": "claude-sonnet-4-0",
   "enable_hooks": true,
   "copy_instructions": true,
   "configure_ignore_patterns": true,
   "protect_guard_settings": true,
   "block_file_bypass": false,
-  "auto_approve_pytest": true
+  "auto_approve_pytest": false
 }
