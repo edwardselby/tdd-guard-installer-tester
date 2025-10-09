@@ -1253,26 +1253,28 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
             total_lines += module.line_count
 
     # Claude IDE Integration
-    print("Claude IDE Integration:")
-    print("-" * 40)
+    from rich.panel import Panel
+    console = get_console()
+    console.print(Panel("Claude IDE Integration", style="bold cyan", width=80))
+    console.print()
     ide_config['enable_hooks'] = ask_yes_no("Enable TDD Guard hooks in Claude IDE?", True)
     ide_config['copy_instructions'] = ask_yes_no("Copy instructions to Claude IDE custom instructions?", True)
     ide_config['configure_ignore_patterns'] = ask_yes_no("Configure ignore patterns for Claude IDE?", True)
-    print()
+    console.print()
 
     # Enforcement Configuration
-    print("Enforcement Configuration:")
-    print("-" * 40)
+    console.print(Panel("Enforcement Configuration", style="bold cyan", width=80))
+    console.print()
     ide_config['protect_guard_settings'] = ask_yes_no("Enable Guard Settings Protection? (Prevents agents from reading TDD Guard config)", True)
     ide_config['block_file_bypass'] = ask_yes_no("Block File Operation Bypass? (Prevents shell commands that bypass TDD validation)", False)
-    print()
+    console.print()
 
     # Auto-Approve Pytest (for any Python project with pytest module)
     if "pytest" in selected_modules:
-        print("Test Automation:")
-        print("-" * 40)
+        console.print(Panel("Test Automation", style="bold cyan", width=80))
+        console.print()
         ide_config['auto_approve_pytest'] = ask_yes_no("Enable automatic approval for pytest commands?", True)
-        print()
+        console.print()
 
     # Ask about test generation
     generate_tests = ask_yes_no("Generate test scenarios?", True)
