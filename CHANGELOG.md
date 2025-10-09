@@ -5,6 +5,20 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1] - 2025-10-08
+
+### Fixed
+- **Pytest Auto-Approval Availability**: Removed Flask-only restriction for pytest auto-approval
+  - Feature now available for **all Python projects** with pytest module selected
+  - Previously only prompted for Flask projects, now works for Flask, FastAPI, Django, and general Python projects
+  - Updated condition from `project_type == "Python - Flask" and "pytest" in selected_modules` to `"pytest" in selected_modules`
+  - Addresses issue where pytest auto-approval was not offered during installation for non-Flask projects
+
+### Technical Details
+- Modified file: `install.py` (line 966)
+- Tests remain valid as they test the functionality, not the Flask-specific condition
+- No breaking changes - expands feature availability
+
 ## [3.3.0] - 2025-10-08
 
 ### Changed

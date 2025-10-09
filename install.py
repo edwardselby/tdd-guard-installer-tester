@@ -962,8 +962,8 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None) ->
     ide_config['block_file_bypass'] = ask_yes_no("Block File Operation Bypass? (Prevents shell commands that bypass TDD validation)", False)
     print()
 
-    # Auto-Approve Pytest (only for Flask projects with pytest module)
-    if project_type == "Python - Flask" and "pytest" in selected_modules:
+    # Auto-Approve Pytest (for any Python project with pytest module)
+    if "pytest" in selected_modules:
         print("Test Automation:")
         print("-" * 40)
         ide_config['auto_approve_pytest'] = ask_yes_no("Enable automatic approval for pytest commands?", True)
