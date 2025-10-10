@@ -287,3 +287,19 @@ def test_select_model_interactive_calls_inquirer():
         result = select_model_interactive(models)
 
         assert result == models[0]
+
+
+def test_select_from_exclusive_group_interactive_calls_inquirer():
+    """Test that exclusive group selection uses InquirerPy select for radio buttons"""
+    from install import select_from_exclusive_group_interactive, ModuleInfo
+    from pathlib import Path
+
+    modules = [ModuleInfo("core-strict", Path("/fake"), silent=True)]
+
+    mock_select = MagicMock()
+    mock_select.execute.return_value = modules[0]
+
+    with patch('InquirerPy.inquirer.select', return_value=mock_select):
+        result = select_from_exclusive_group_interactive("core-tdd", modules)
+
+        assert result == modules[0]

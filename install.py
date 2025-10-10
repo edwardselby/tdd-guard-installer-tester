@@ -152,6 +152,54 @@ def select_model_interactive(models: List[Dict]) -> Dict:
 
     return result
 
+def select_from_exclusive_group_interactive(group_name: str, modules: List['ModuleInfo']) -> 'ModuleInfo':
+    """Select one module from exclusive group using interactive arrow-key menu
+
+    Uses InquirerPy for radio button style selection (select ONE from group).
+    """
+    from InquirerPy import inquirer
+    from InquirerPy.base.control import Choice
+
+    console = get_console()
+
+    # Build choices with module info
+    choices = []
+    default_value = None
+
+    for module in modules:
+        is_default = module.default_enabled
+
+        # Format choice name with module details
+        if is_default:
+            choice_name = f"{module.display_name} (Recommended, default)"
+            default_value = module
+        else:
+            choice_name = module.display_name
+
+        choices.append(Choice(
+            value=module,
+            name=f"{choice_name}\n  {module.description} (+{module.line_count} lines)"
+        ))
+
+    # Show interactive select
+    result = inquirer.select(
+        message=f"{group_name.upper()} - Select ONE:",
+        choices=choices,
+        default=default_value,
+        pointer="●",
+        style={
+            "pointer": "yellow bold",
+            "highlighted": "yellow bold",
+            "answer": "green bold"
+        }
+    ).execute()
+
+    # Show confirmation
+    console.print(f"[green]✓[/green] Selected: [cyan]{result.display_name}[/cyan]")
+    console.print()
+
+    return result
+
 def print_step_header(title: str, step: int, total: int):
     """Print a Rich Panel showing step progress"""
     from rich.panel import Panel
@@ -317,7 +365,16 @@ def select_model(models: List[Dict]) -> Dict:
     return selected_model
 
 def select_from_exclusive_group(group_name: str, modules: List['ModuleInfo']) -> 'ModuleInfo':
-    """Select one module from an exclusive group using Rich UI"""
+    """Select one module from exclusive group with interactive menu or fallback
+
+    Uses InquirerPy for radio button selection in interactive terminals.
+    Falls back to Rich table with text input for CI/CD environments.
+    """
+    # Use interactive menu if terminal supports it
+    if is_interactive_terminal():
+        return select_from_exclusive_group_interactive(group_name, modules)
+
+    # Fallback to Rich table with text input for non-interactive terminals
     from rich.table import Table
     from rich.panel import Panel
     from rich.prompt import Prompt
