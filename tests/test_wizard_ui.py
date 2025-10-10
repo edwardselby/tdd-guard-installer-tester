@@ -272,3 +272,18 @@ def test_is_interactive_terminal_returns_false_for_non_tty():
 
     with patch('sys.stdin.isatty', return_value=False):
         assert is_interactive_terminal() is False
+
+
+def test_select_model_interactive_calls_inquirer():
+    """Test that select_model_interactive uses InquirerPy for arrow-key selection"""
+    from install import select_model_interactive
+
+    models = [{"id": "sonnet", "name": "Claude Sonnet 4.0", "description": "Balanced", "default": True}]
+
+    mock_select = MagicMock()
+    mock_select.execute.return_value = models[0]
+
+    with patch('InquirerPy.inquirer.select', return_value=mock_select):
+        result = select_model_interactive(models)
+
+        assert result == models[0]

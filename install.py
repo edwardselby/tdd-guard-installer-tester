@@ -104,6 +104,54 @@ def is_interactive_terminal() -> bool:
     import sys
     return sys.stdin.isatty()
 
+def select_model_interactive(models: List[Dict]) -> Dict:
+    """Select Claude AI model using interactive arrow-key menu
+
+    Uses InquirerPy for better UX with arrow-key navigation instead of typing numbers.
+    """
+    from InquirerPy import inquirer
+    from InquirerPy.base.control import Choice
+
+    console = get_console()
+
+    # Build choices with formatting
+    choices = []
+    default_value = None
+
+    for model in models:
+        is_default = model.get('default', False)
+
+        # Format choice name
+        if is_default:
+            choice_name = f"{model['name']} (Recommended, default)"
+            default_value = model
+        else:
+            choice_name = model['name']
+
+        choices.append(Choice(
+            value=model,
+            name=f"{choice_name}\n  {model['description']}"
+        ))
+
+    # Show interactive select
+    result = inquirer.select(
+        message="Select Claude AI model:",
+        choices=choices,
+        default=default_value,
+        pointer="❯",
+        style={
+            "pointer": "cyan bold",
+            "highlighted": "cyan bold",
+            "answer": "green bold"
+        }
+    ).execute()
+
+    # Show confirmation
+    console.print(f"[green]✓[/green] Selected: [cyan]{result['name']}[/cyan]")
+    console.print()
+
+    return result
+
 def print_step_header(title: str, step: int, total: int):
     """Print a Rich Panel showing step progress"""
     from rich.panel import Panel
@@ -214,7 +262,16 @@ def get_express_mode_config(modules: List, models: List[Dict]) -> Dict:
     }
 
 def select_model(models: List[Dict]) -> Dict:
-    """Select Claude AI model using Rich table"""
+    """Select Claude AI model with interactive arrow-key menu or fallback to text input
+
+    Uses InquirerPy for arrow-key navigation in interactive terminals.
+    Falls back to Rich table with text input for CI/CD environments.
+    """
+    # Use interactive menu if terminal supports it
+    if is_interactive_terminal():
+        return select_model_interactive(models)
+
+    # Fallback to Rich table with text input for non-interactive terminals
     from rich.table import Table
     from rich.panel import Panel
     from rich.prompt import Prompt
