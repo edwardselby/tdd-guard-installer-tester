@@ -138,12 +138,7 @@ def select_model_interactive(models: List[Dict]) -> Dict:
         message="Select Claude AI model:",
         choices=choices,
         default=default_value,
-        pointer="❯",
-        style={
-            "pointer": "cyan bold",
-            "highlighted": "cyan bold",
-            "answer": "green bold"
-        }
+        pointer="❯"
     ).execute()
 
     # Show confirmation
@@ -186,12 +181,7 @@ def select_from_exclusive_group_interactive(group_name: str, modules: List['Modu
         message=f"{group_name.upper()} - Select ONE:",
         choices=choices,
         default=default_value,
-        pointer="●",
-        style={
-            "pointer": "yellow bold",
-            "highlighted": "yellow bold",
-            "answer": "green bold"
-        }
+        pointer="●"
     ).execute()
 
     # Show confirmation
@@ -234,12 +224,7 @@ def select_standalone_modules_interactive(modules: List['ModuleInfo']) -> List['
         message="Select standalone modules (space to toggle, enter to confirm):",
         choices=choices,
         default=defaults,
-        pointer="❯",
-        style={
-            "pointer": "cyan bold",
-            "highlighted": "cyan bold",
-            "answer": "green bold"
-        }
+        pointer="❯"
     ).execute()
 
     # Show confirmation
@@ -319,12 +304,31 @@ def parse_module_selection(selection: str, max_count: int) -> List[int]:
     return indices
 
 def select_wizard_mode() -> str:
-    """Prompt user to select wizard mode"""
+    """Prompt user to select wizard mode with interactive selection or fallback"""
     from rich.prompt import Prompt
     from rich.panel import Panel
 
     console = get_console()
 
+    # Use interactive arrow-key selection if TTY is available
+    if is_interactive_terminal():
+        from InquirerPy import inquirer
+        from InquirerPy.base.control import Choice
+
+        choices = [
+            Choice(value="express", name="Express - Quick setup with recommended defaults (~90 seconds faster)"),
+            Choice(value="custom", name="Custom - Full control over all settings"),
+            Choice(value="minimal", name="Minimal - Bare minimum configuration")
+        ]
+
+        return inquirer.select(
+            message="Select wizard mode:",
+            choices=choices,
+            default="express",
+            pointer="❯"
+        ).execute()
+
+    # Fallback to Rich prompt for non-TTY environments
     modes_text = """[cyan]1.[/cyan] Express   - Quick setup with recommended defaults (~90 seconds faster)
 [cyan]2.[/cyan] Custom    - Full control over all settings
 [cyan]3.[/cyan] Minimal   - Bare minimum configuration"""
@@ -531,6 +535,33 @@ def select_standalone_modules(modules: List['ModuleInfo']) -> List['ModuleInfo']
 
     console.print()
     return selected
+
+def show_tty_status():
+    """Display TTY detection status for debugging interactive features"""
+    from rich.panel import Panel
+    import sys
+
+    console = get_console()
+
+    tty_enabled = is_interactive_terminal()
+    stdin_isatty = sys.stdin.isatty()
+
+    if tty_enabled:
+        status_icon = "[green]✓[/green]"
+        status_text = "[green]TTY Enabled:[/green] Using interactive arrow-key navigation"
+        style = "green"
+    else:
+        status_icon = "[yellow]⚠[/yellow]"
+        status_text = "[yellow]TTY Disabled:[/yellow] Using text-based input fallback"
+        style = "yellow"
+
+    message = f"{status_icon} {status_text}\n"
+    message += f"  [dim]sys.stdin.isatty() = {stdin_isatty}[/dim]"
+
+    panel = Panel(message, title="TTY Detection Status", style=style, width=80)
+    console.print()
+    console.print(panel)
+    console.print()
 
 def show_line_count_warning(line_count: int, threshold: int = 300):
     """Display Rich warning panel for line count exceeding threshold"""
@@ -845,6 +876,72 @@ def discover_projects() -> List[Dict]:
 # Phase 2: Interactive Project Selection
 # ============================================================================
 
+def select_project_interactive(projects: List[Dict]) -> Optional[Path]:
+    """Interactive project selection using InquirerPy arrow-key navigation"""
+    from InquirerPy import inquirer
+    from InquirerPy.base.control import Choice
+    from rich.prompt import Prompt
+
+    console = get_console()
+
+    # Build choices with project info
+    choices = []
+
+    for i, project in enumerate(projects, 1):
+        # Format venv status
+        venv_status = "✓ Venv" if project['venv'] else "✗ No venv"
+
+        # Format TDD Guard status
+        tdd_status = "⚠ Installed" if project['has_tdd_guard'] else "Not installed"
+
+        # Format choice display
+        choice_name = f"{project['name']:.<45} │ {project['type']:<16} │ {venv_status:<15} │ {tdd_status}"
+
+        choices.append(Choice(
+            value=project,
+            name=choice_name
+        ))
+
+    # Add custom path option at the end
+    choices.append(Choice(
+        value="custom",
+        name="[Custom Path] - Specify a different location"
+    ))
+
+    # Show interactive select
+    result = inquirer.select(
+        message="Select target project:",
+        choices=choices,
+        pointer="❯"
+    ).execute()
+
+    # Handle custom path
+    if result == "custom":
+        custom_path = Prompt.ask("\n[cyan]Enter project path[/cyan]")
+        project_path = Path(custom_path).expanduser().resolve()
+        is_valid, message = validate_project_path(project_path)
+        if is_valid:
+            return project_path
+        else:
+            console.print(f"\n[red]✗[/red] Invalid path: {message}")
+            return None
+
+    # Show selected project details
+    console.print(f"\n[green]✓[/green] Selected: [cyan]{result['name']}[/cyan]")
+    console.print(f"  Path: {result['path']}")
+    console.print(f"  Type: {result['type']}")
+
+    if result['has_tdd_guard']:
+        console.print("\n[yellow]⚠  Warning:[/yellow] This project already has TDD Guard installed.")
+        console.print("  Continuing will overwrite existing configuration.")
+
+    if ask_yes_no("\nContinue with this project?", True):
+        console.print()
+        return result['path']
+    else:
+        console.print("\n[red]✗[/red] Installation cancelled.")
+        return None
+
 def select_target_project() -> Optional[Path]:
     """Interactive project selection with auto-discovery using Rich UI"""
     from rich.panel import Panel
@@ -861,6 +958,12 @@ def select_target_project() -> Optional[Path]:
 
     projects = discover_projects()
 
+    # Use interactive arrow-key selection if TTY is available
+    if projects and is_interactive_terminal():
+        console.print(f"[green]✓[/green] Discovered {len(projects)} compatible project(s)\n")
+        return select_project_interactive(projects)
+
+    # Fallback to Rich table with text input for non-TTY environments
     if not projects:
         console.print("[yellow]⚠[/yellow]  No compatible projects found in parent directory.")
         console.print("[dim]Make sure you have cloned TDD-guard-test into your projects directory.[/dim]")
@@ -1739,6 +1842,9 @@ def main():
     target_path = None
     project_type = None
     if not args.list and not args.all and not args.modules:
+        # Show TTY status at the very beginning
+        show_tty_status()
+
         target_path = select_target_project()
         if not target_path:
             print()
