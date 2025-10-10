@@ -459,6 +459,58 @@ def show_generation_results(results: Dict):
         console.print("[bold yellow]⚠ Some validations failed - please review the generated files[/bold yellow]")
     console.print()
 
+def show_installation_complete(target_path: Path, selected_modules: List[str], ide_config: Dict, ide_results: Dict, package_installed: bool):
+    """Display installation complete banner and summary using Rich UI"""
+    from rich.panel import Panel
+    from rich.table import Table
+
+    console = get_console()
+
+    # Success banner
+    console.print()
+    console.print(Panel("🎉 Installation Complete!", style="bold green", width=80))
+    console.print()
+
+    # Target project info panel
+    project_info = f"[bold cyan]Target Project:[/bold cyan] {target_path.name}\n"
+    project_info += f"[dim]Location:[/dim] {target_path}"
+    console.print(Panel(project_info, style="cyan", width=80, title="Project Info"))
+    console.print()
+
+    # Configuration table
+    config_table = Table(show_header=True, header_style="bold magenta", width=80)
+    config_table.add_column("Setting", style="cyan", width=25)
+    config_table.add_column("Value", width=55)
+
+    config_table.add_row("Modules", f"{len(selected_modules)} selected")
+    config_table.add_row("Model", ide_config.get('model_id', 'Not configured'))
+
+    package_status = "[green]✓ Installed[/green]" if package_installed else "[red]✗ Not installed[/red]"
+    config_table.add_row("Package", f"tdd-guard-pytest {package_status}")
+
+    console.print(config_table)
+    console.print()
+
+    # Files created list
+    if ide_results.get('hooks') or ide_results.get('instructions') or ide_results.get('ignore_patterns'):
+        console.print("[bold cyan]Files created in target project:[/bold cyan]")
+        if ide_results.get('hooks'):
+            console.print(f"  [green]✓[/green] {target_path / '.claude' / 'settings.local.json'}")
+        if ide_results.get('instructions'):
+            console.print(f"  [green]✓[/green] {target_path / '.claude' / 'tdd-guard' / 'data' / 'instructions.md'}")
+        if ide_results.get('ignore_patterns'):
+            console.print(f"  [green]✓[/green] {target_path / '.claude' / 'tdd-guard' / 'data' / 'config.json'}")
+        console.print()
+
+    # Next steps panel
+    next_steps = "[bold]Next steps:[/bold]\n\n"
+    next_steps += f"  [cyan]1.[/cyan] [dim cyan]cd {target_path}[/dim cyan]\n"
+    next_steps += "  [cyan]2.[/cyan] Restart Claude Code to load new hooks\n"
+    next_steps += "  [cyan]3.[/cyan] Start writing tests with TDD Guard protection!"
+
+    console.print(Panel(next_steps, style="bold cyan", width=80, title="Getting Started"))
+    console.print()
+
 # ============================================================================
 # Phase 1: Project Discovery & Detection Functions
 # ============================================================================
@@ -1189,9 +1241,11 @@ def configure_auto_approve_pytest(enabled: bool, target_path: Path) -> bool:
         return False
 
 def validate_generated_file(file_path: Path, estimated_lines: int, file_type: str = "instructions") -> bool:
-    """Validate that generated file matches estimated line count"""
+    """Validate that generated file matches estimated line count (uses Rich Console)"""
+    console = get_console()
+
     if not file_path.exists():
-        print(f"VALIDATION FAILED: {file_type} file not found at {file_path}")
+        console.print(f"[red]✗ VALIDATION FAILED:[/red] {file_type} file not found at {file_path}")
         return False
 
     try:
@@ -1204,25 +1258,25 @@ def validate_generated_file(file_path: Path, estimated_lines: int, file_type: st
         upper_bound = estimated_lines + tolerance
 
         if lower_bound <= actual_lines <= upper_bound:
-            print(f"VALIDATION PASSED: {file_type} file ({actual_lines} lines, estimated {estimated_lines})")
+            console.print(f"[green]✓ VALIDATION PASSED:[/green] {file_type} file ({actual_lines} lines, estimated {estimated_lines})")
             return True
         else:
             variance = abs(actual_lines - estimated_lines)
             percentage = (variance / estimated_lines) * 100 if estimated_lines > 0 else 0
-            print(f"VALIDATION WARNING: {file_type} file line count mismatch")
-            print(f"   Expected: ~{estimated_lines} lines (±{tolerance})")
-            print(f"   Actual: {actual_lines} lines")
-            print(f"   Variance: {variance} lines ({percentage:.1f}%)")
+            console.print(f"[yellow]⚠ VALIDATION WARNING:[/yellow] {file_type} file line count mismatch")
+            console.print(f"   Expected: ~{estimated_lines} lines (±{tolerance})")
+            console.print(f"   Actual: {actual_lines} lines")
+            console.print(f"   Variance: {variance} lines ({percentage:.1f}%)")
 
             if percentage > 50:  # Major variance
-                print(f"   This is a significant variance - please check module line calculations")
+                console.print(f"   [red]This is a significant variance - please check module line calculations[/red]")
                 return False
             else:
-                print(f"   This variance is within acceptable range for content generation")
+                console.print(f"   [dim]This variance is within acceptable range for content generation[/dim]")
                 return True
 
     except Exception as e:
-        print(f"VALIDATION ERROR: Could not validate {file_type} file: {e}")
+        console.print(f"[red]✗ VALIDATION ERROR:[/red] Could not validate {file_type} file: {e}")
         return False
 
 def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mode: Optional[str] = None) -> Tuple[List[str], bool, int, Dict]:
@@ -1657,34 +1711,9 @@ def main():
         'removed_patterns': list(removed_patterns)
     })
 
-    # PHASE 5.2: Installation Summary (only for wizard mode with target)
+    # Installation Summary (only for wizard mode with target) - Rich UI
     if target_path:
-        print()
-        print("=" * 50)
-        print("Installation Complete!")
-        print("=" * 50)
-        print()
-        print("Target Project:", target_path.name)
-        print("Location:", str(target_path))
-        print()
-        print("Configuration:")
-        print("  Modules:", len(selected_modules), "modules selected")
-        print("  Model:", ide_config.get('model_id', 'Not configured'))
-        print("  Package: tdd-guard-pytest", "✓ Installed" if package_installed else "✗ Not installed")
-        print()
-        print("Files created in target project:")
-        if ide_results.get('hooks'):
-            print("  ✓", target_path / '.claude' / 'settings.local.json')
-        if ide_results.get('instructions'):
-            print("  ✓", target_path / '.claude' / 'tdd-guard' / 'data' / 'instructions.md')
-        if ide_results.get('ignore_patterns'):
-            print("  ✓", target_path / '.claude' / 'tdd-guard' / 'data' / 'config.json')
-        print()
-        print("Next steps:")
-        print("  1. cd", str(target_path))
-        print("  2. Restart Claude Code to load new hooks")
-        print("  3. Start writing tests with TDD Guard protection!")
-        print()
+        show_installation_complete(target_path, selected_modules, ide_config, ide_results, package_installed)
 
 if __name__ == '__main__':
     main()

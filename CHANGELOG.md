@@ -5,6 +5,58 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2025-10-10
+
+### Added
+- **Rich UI Summary Screens**: Complete transformation of installation summary output
+  - Warning panel for large instruction files (>300 lines) with severity indicators
+  - Generation results table showing all validation, IDE integration, and configuration status
+  - Installation complete banner with success panel and emoji celebration
+  - Project info panel with target project details
+  - Configuration summary table (modules, model, package status)
+  - Files created checklist with green checkmarks
+  - Next steps panel with numbered instructions and command syntax highlighting
+
+### Changed
+- **Generation Complete Section**: Replaced ~80 lines of print() with Rich Table
+  - Color-coded status indicators: ✓ (green) for success, ✗ (red) for failure
+  - Comprehensive results display: Instructions, Tests, Model, Hooks, IDE integration, Enforcement
+  - Multi-line cells for file paths and detailed information
+  - Consistent 80-char panel/table width
+- **Installation Summary**: Replaced 27 lines of print() with Rich Panels and Table
+  - Success banner: "🎉 Installation Complete!" in bold green
+  - Project info panel with cyan styling
+  - Configuration table with proper formatting
+  - Next steps panel with syntax-highlighted commands
+- **Validation Messages**: Converted to Rich Console output
+  - Color-coded: green (✓ PASSED), yellow (⚠ WARNING), red (✗ FAILED)
+  - Improved readability with markup formatting
+  - Consistent with overall Rich UI theme
+
+### Technical Details
+- Added `show_line_count_warning()` function (install.py:352-372)
+- Added `show_generation_results()` function (install.py:374-460)
+- Added `show_installation_complete()` function (install.py:462-512)
+- Updated `validate_generated_file()` to use Rich Console (install.py:1243-1280)
+- Reduced code: ~110 lines of print() replaced with 3 Rich UI functions
+- All 35 tests passing ✅ (15 wizard UI + 20 install)
+
+### Code Quality Improvements
+- Net code reduction: ~110 lines removed, ~140 lines added (Rich functions)
+- Better separation of concerns: UI logic in dedicated, reusable functions
+- Enhanced user experience: Professional Rich UI from start to finish
+- Improved maintainability: Centralized styling and formatting
+- Consistent visual hierarchy throughout entire wizard flow
+
+### Visual Improvements
+✓ Consistent Rich UI from wizard start to installation complete
+✓ Color-coded status for quick scanning (green/yellow/red)
+✓ Professional panels and tables with proper width (80 chars)
+✓ Emoji indicators for visual impact (🎉, ⚠️, 🔴, ✓, ✗)
+✓ Syntax highlighting for commands in next steps
+✓ Multi-line table cells for detailed information
+✓ Proper spacing and visual separation between sections
+
 ## [3.5.0] - 2025-10-10
 
 ### Added
