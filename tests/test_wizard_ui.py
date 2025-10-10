@@ -148,7 +148,7 @@ def test_select_model_displays_rich_table():
 
     with patch('install.get_console') as mock_console:
         with patch('rich.prompt.Prompt.ask', return_value='1'):
-            result = select_model(models, step=1, total=5)
+            result = select_model(models)
 
             # Should print Rich table
             mock_console.return_value.print.assert_called()

@@ -204,14 +204,17 @@ def get_express_mode_config(modules: List, models: List[Dict]) -> Dict:
         'generate_tests': True
     }
 
-def select_model(models: List[Dict], step: int = 1, total: int = 5) -> Dict:
+def select_model(models: List[Dict]) -> Dict:
     """Select Claude AI model using Rich table"""
     from rich.table import Table
+    from rich.panel import Panel
     from rich.prompt import Prompt
 
     console = get_console()
 
-    print_step_header("Model Selection", step, total)
+    # Display header
+    console.print(Panel("Model Selection", style="bold cyan", width=80))
+    console.print()
 
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("#", style="dim", width=4)
@@ -1203,7 +1206,7 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
 
     # Model Selection using Rich UI
     models = load_models()
-    selected_model = select_model(models, step=1, total=5)
+    selected_model = select_model(models)
     ide_config['model_id'] = selected_model['id']
 
     # Auto-include model-specific modules BEFORE showing module selection
