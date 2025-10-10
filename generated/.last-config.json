@@ -13,7 +13,7 @@
     "meta"
   ],
   "generate_tests": false,
-  "target_path": "/Users/edward/PycharmProjects/football-statistics-microservice",
+  "target_path": "/Users/edward/PycharmProjects/data-aggregation-microservice",
   "model_id": "claude-sonnet-4-0",
   "enable_hooks": true,
   "copy_instructions": true,

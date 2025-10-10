@@ -11,6 +11,9 @@ tdd-guard-pytest>=0.1.2
 # Rich terminal UI
 rich>=13.7.0
 
+# Interactive prompts with arrow-key navigation
+InquirerPy>=0.3.4
+
 # Standard library modules (included with Python)
 # - pathlib (Python 3.4+)
 # - argparse (Python 3.2+)

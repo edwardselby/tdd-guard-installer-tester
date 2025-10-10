@@ -256,3 +256,19 @@ def test_show_generation_results_uses_rich_table():
         # Should print Rich Panel and Table
         mock_console.return_value.print.assert_called()
         assert mock_console.return_value.print.call_count >= 2
+
+
+def test_is_interactive_terminal_returns_true_for_tty():
+    """Test TTY detection returns True for interactive terminals"""
+    from install import is_interactive_terminal
+
+    with patch('sys.stdin.isatty', return_value=True):
+        assert is_interactive_terminal() is True
+
+
+def test_is_interactive_terminal_returns_false_for_non_tty():
+    """Test TTY detection returns False for non-interactive terminals (CI/CD)"""
+    from install import is_interactive_terminal
+
+    with patch('sys.stdin.isatty', return_value=False):
+        assert is_interactive_terminal() is False

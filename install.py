@@ -95,6 +95,15 @@ def get_console() -> Console:
         _console = Console()
     return _console
 
+def is_interactive_terminal() -> bool:
+    """Check if running in interactive terminal with TTY support
+
+    Returns True for interactive terminals, False for CI/CD environments
+    or when output is redirected to files/pipes.
+    """
+    import sys
+    return sys.stdin.isatty()
+
 def print_step_header(title: str, step: int, total: int):
     """Print a Rich Panel showing step progress"""
     from rich.panel import Panel
