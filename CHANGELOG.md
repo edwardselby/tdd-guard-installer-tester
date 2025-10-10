@@ -5,6 +5,61 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2025-10-10
+
+### Added
+- **Rich Terminal UI**: Complete wizard redesign with beautiful terminal interfaces
+  - Rich Console singleton for consistent output formatting
+  - Rich Panels for all section headers (80-char width for consistency)
+  - Rich Tables for model and module selection
+  - Rich Confirm prompts for yes/no questions
+  - Rich Prompt with validation for user input
+  - Visual feedback: ✓ checkmarks, ● radio buttons, colored output
+
+### Changed
+- **Model Selection**: Replaced print() with Rich Table showing columns: #, Model, Description, Default
+- **Exclusive Group Selection**: Radio-button style UI with Rich Panel and Table
+- **Standalone Module Selection**: Checkbox-style UI with individual Rich Confirm prompts
+- **IDE Integration Section**: Rich Panel header with cyan styling
+- **Enforcement Section**: Rich Panel header with cyan styling
+- **Test Automation Section**: Rich Panel header (conditional on pytest module)
+- **Project Selection**: Converted to Rich Table with validation
+- **Wizard Progress**: Removed misleading "Step X/Y" indicators, using consistent Rich Panels instead
+
+### Technical Details
+- Implemented following TDD methodology: Red-Green-Refactor cycles for all changes
+- Created `get_console()` singleton for Rich Console instance (install.py:88-96)
+- Converted `ask_yes_no()` to use Rich Confirm (install.py:682-684)
+- Added `select_model()` function with Rich UI (install.py:207-248)
+- Added `select_from_exclusive_group()` function (install.py:250-299)
+- Added `select_standalone_modules()` function (install.py:301-347)
+- Refactored `run_wizard()` to use new Rich UI functions (multiple sections)
+- All 33 tests passing (13 wizard UI + 20 install) - no breaking changes
+
+### Files Modified/Enhanced
+- `install.py`: Added Rich UI infrastructure and refactored wizard (lines 88-1277)
+- `tests/test_wizard_ui.py`: Added 13 comprehensive tests for Rich UI components (195 lines)
+- `requirements.txt`: Already included rich>=13.7.0 dependency
+
+### Code Quality Improvements
+- Reduced code duplication: 77 lines of old print()/input() code replaced with 3 reusable functions
+- Better separation of concerns: UI logic extracted into dedicated functions
+- Enhanced user experience: Professional-looking terminal interface with clear visual hierarchy
+- Improved maintainability: Centralized UI styling and formatting
+
+### Test Coverage
+- 13 new tests covering all Rich UI components:
+  - Console instance creation
+  - Rich Confirm prompts
+  - Step headers with panels
+  - Module tables
+  - Selection parsing (numbers, ranges, shortcuts)
+  - Wizard mode selection
+  - Express mode configuration
+  - Model selection with Rich Table
+  - Exclusive group selection with Rich UI
+  - Standalone module selection with Rich UI
+
 ## [3.4.0] - 2025-10-09
 
 ### Added
