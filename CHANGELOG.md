@@ -5,6 +5,97 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2025-10-10
+
+### Added
+- **Interactive Arrow-Key Navigation**: Complete transformation from text-based to arrow-key navigation
+  - InquirerPy>=0.3.4 dependency for modern terminal UI
+  - TTY detection helper (`is_interactive_terminal()`) for environment compatibility
+  - Graceful fallback to Rich text input for CI/CD environments
+
+- **Interactive Model Selection** (Phase 1):
+  - Arrow-key navigation for Claude AI model selection
+  - Visual highlighting of current selection
+  - Multi-line choice display with descriptions
+  - Cyan pointer and styling for model selection
+  - Pre-selected recommended default model
+  - Function: `select_model_interactive()` (install.py:107-153)
+
+- **Interactive Exclusive Group Selection** (Phase 2):
+  - Radio button style selection for exclusive groups (SELECT ONE)
+  - Arrow-key navigation for TDD strictness level selection
+  - Yellow pointer (●) for visual distinction from model selection
+  - Displays module details: name, description, line count
+  - Function: `select_from_exclusive_group_interactive()` (install.py:155-201)
+
+- **Interactive Multi-Select with Checkboxes** (Phase 3):
+  - Checkbox interface for standalone module selection
+  - Space bar to toggle, arrow keys to navigate, Enter to confirm
+  - Pre-selected recommended modules (enabled=True)
+  - Visual feedback showing all selections before confirmation
+  - Displays count and names of selected modules
+  - Function: `select_standalone_modules_interactive()` (install.py:203-252)
+
+### Changed
+- **Model Selection**: Updated `select_model()` with TTY detection
+  - Interactive: Uses arrow-key navigation with InquirerPy
+  - Non-interactive: Falls back to Rich table with text input
+  - Zero breaking changes - all existing tests pass
+
+- **Exclusive Group Selection**: Updated `select_from_exclusive_group()` with TTY detection
+  - Interactive: Uses radio button selection with arrow keys
+  - Non-interactive: Falls back to Rich table with numbered selection
+  - Backward compatible with CI/CD environments
+
+- **Standalone Module Selection**: Updated `select_standalone_modules()` with TTY detection
+  - Interactive: Uses checkbox interface with space bar toggle
+  - Non-interactive: Falls back to individual Rich Confirm prompts
+  - Maintains same functionality across environments
+
+### Benefits
+- ✅ **Modern UX**: Arrow keys instead of typing numbers or text
+- ✅ **Intuitive**: Space to toggle, arrows to navigate, Enter to confirm
+- ✅ **Visual Feedback**: See highlighted selection before confirming
+- ✅ **Faster Workflow**: Navigate options quickly without typing
+- ✅ **Reduced Errors**: No mistyped numbers or invalid inputs
+- ✅ **Backward Compatible**: Graceful fallback for non-interactive terminals
+- ✅ **Zero Breaking Changes**: All 40 tests passing, no regressions
+
+### Technical Details
+- Added TTY detection: `is_interactive_terminal()` using `sys.stdin.isatty()`
+- InquirerPy integration:
+  - `inquirer.select()` for single selection (model, exclusive groups)
+  - `inquirer.checkbox()` for multi-select (standalone modules)
+  - Choice objects with custom display names and defaults
+- Rich UI fallbacks for CI/CD environments maintain existing functionality
+- All 40 tests passing ✅ (20 install + 20 wizard UI)
+- 3 new tests for interactive features (install.py:98-252, tests/test_wizard_ui.py:261-321)
+
+### TDD Methodology
+**All phases followed strict Red-Green-Refactor cycles:**
+- Phase 0: Dependencies & TTY detection infrastructure
+- Phase 1: Interactive model selection with arrow keys
+- Phase 2: Interactive exclusive group selection with radio buttons
+- Phase 3: Interactive multi-select with checkboxes
+- Each phase: Write failing test → Implement feature → Refactor with fallback
+
+### Code Quality Improvements
+- Separation of concerns: Interactive functions separate from fallback logic
+- TTY detection ensures correct UX for each environment
+- Consistent styling across all interactive features (cyan/yellow pointers, bold highlights)
+- Clear user instructions in prompts ("space to toggle, enter to confirm")
+- Comprehensive test coverage for all interactive features
+
+### Visual Improvements
+✓ Arrow-key navigation for all selection screens
+✓ Visual highlighting of current selection
+✓ Radio button (●) pointer for exclusive groups
+✓ Checkbox interface for multi-select
+✓ Confirmation messages after selection
+✓ Consistent color scheme (cyan for general, yellow for groups)
+✓ Multi-line choice display with descriptions
+✓ Pre-selected defaults for recommended options
+
 ## [3.5.1] - 2025-10-10
 
 ### Added
