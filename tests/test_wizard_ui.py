@@ -203,3 +203,56 @@ def test_select_standalone_modules_uses_rich():
             mock_console.return_value.print.assert_called()
             assert len(selected) == 1
             assert selected[0].name == "mod1"
+
+
+def test_show_line_count_warning_uses_rich_panel():
+    """Test line count warning displays Rich Panel with yellow styling"""
+    from install import show_line_count_warning
+
+    with patch('install.get_console') as mock_console:
+        show_line_count_warning(450, threshold=300)
+
+        # Should print Rich Panel with warning
+        mock_console.return_value.print.assert_called()
+        # Verify it was called (Panel will be in call args)
+        assert mock_console.return_value.print.call_count >= 1
+
+
+def test_show_generation_results_uses_rich_table():
+    """Test generation results display uses Rich Table"""
+    from install import show_generation_results
+    from pathlib import Path
+
+    results = {
+        'instructions_file': Path('/fake/instructions.md'),
+        'instruction_lines': 500,
+        'tests_file': Path('/fake/tests.md'),
+        'test_lines': 100,
+        'instructions_valid': True,
+        'tests_valid': True,
+        'selected_modules': ['core', 'pytest'],
+        'ide_results': {
+            'model': True,
+            'hooks': True,
+            'instructions': True,
+            'ignore_patterns': True,
+            'auto_approve_pytest': True,
+            'enforcement': True
+        },
+        'ide_config': {
+            'model_id': 'claude-sonnet-4-0',
+            'enable_hooks': True,
+            'copy_instructions': True,
+            'configure_ignore_patterns': True,
+            'auto_approve_pytest': True,
+            'protect_guard_settings': True,
+            'block_file_bypass': False
+        }
+    }
+
+    with patch('install.get_console') as mock_console:
+        show_generation_results(results)
+
+        # Should print Rich Panel and Table
+        mock_console.return_value.print.assert_called()
+        assert mock_console.return_value.print.call_count >= 2

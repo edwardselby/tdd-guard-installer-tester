@@ -349,6 +349,116 @@ def select_standalone_modules(modules: List['ModuleInfo']) -> List['ModuleInfo']
     console.print()
     return selected
 
+def show_line_count_warning(line_count: int, threshold: int = 300):
+    """Display Rich warning panel for line count exceeding threshold"""
+    from rich.panel import Panel
+
+    console = get_console()
+
+    # Determine severity styling
+    if line_count > 400:
+        style = "bold red"
+        icon = "🔴"
+    else:
+        style = "bold yellow"
+        icon = "⚠️"
+
+    warning_text = f"{icon} Generated instructions are {line_count} lines (exceeds {threshold}-line limit)\n"
+    warning_text += f"Quality may degrade with instructions over {threshold} lines."
+
+    panel = Panel(warning_text, style=style, width=80, title="Warning")
+    console.print()
+    console.print(panel)
+    console.print()
+
+def show_generation_results(results: Dict):
+    """Display generation and installation results using Rich UI"""
+    from rich.panel import Panel
+    from rich.table import Table
+
+    console = get_console()
+
+    # Header Panel
+    console.print()
+    console.print(Panel("Generation Complete", style="bold cyan", width=80))
+    console.print()
+
+    # Results Table
+    table = Table(show_header=True, header_style="bold magenta", width=80)
+    table.add_column("Feature", style="cyan", width=30)
+    table.add_column("Status", width=50)
+
+    # File generation results
+    inst_status = "[green]✓ PASSED[/green]" if results.get('instructions_valid') else "[red]✗ FAILED[/red]"
+    inst_file = results.get('instructions_file')
+    inst_lines = results.get('instruction_lines', 0)
+    table.add_row("Instructions", f"{inst_status} ({inst_lines} lines)\n{inst_file}")
+
+    if results.get('tests_file'):
+        test_status = "[green]✓ PASSED[/green]" if results.get('tests_valid') else "[red]✗ FAILED[/red]"
+        test_file = results.get('tests_file')
+        test_lines = results.get('test_lines', 0)
+        table.add_row("Tests", f"{test_status} ({test_lines} lines)\n{test_file}")
+
+    # IDE Integration results
+    ide_config = results.get('ide_config', {})
+    ide_results = results.get('ide_results', {})
+
+    if ide_config.get('model_id'):
+        model_status = "[green]Updated[/green]" if ide_results.get('model') else "[red]Failed[/red]"
+        table.add_row("Model", f"{ide_config['model_id']} → {model_status}")
+
+    if ide_config.get('enable_hooks'):
+        hooks_status = "[green]Enabled[/green]" if ide_results.get('hooks') else "[red]Failed[/red]"
+        table.add_row("Hooks", f"{hooks_status} in Claude IDE settings")
+
+    if ide_config.get('copy_instructions'):
+        inst_status = "[green]Copied[/green]" if ide_results.get('instructions') else "[red]Failed[/red]"
+        table.add_row("Instructions", f"{inst_status} to Claude IDE")
+
+    if ide_config.get('configure_ignore_patterns'):
+        if ide_results.get('ignore_patterns'):
+            # Check for removed patterns in results
+            removed_patterns = results.get('removed_patterns', [])
+            if removed_patterns:
+                removed_list = ', '.join(sorted(removed_patterns))
+                table.add_row("Ignore Patterns", f"[green]Removed:[/green] {removed_list}")
+            else:
+                table.add_row("Ignore Patterns", "[green]Configured[/green]")
+        else:
+            table.add_row("Ignore Patterns", "[red]Failed[/red]")
+
+    if ide_config.get('auto_approve_pytest'):
+        pytest_status = "[green]Enabled[/green]" if ide_results.get('auto_approve_pytest') else "[red]Failed[/red]"
+        table.add_row("Auto-approve pytest", f"{pytest_status} for pytest commands")
+
+    # Enforcement
+    if ide_config.get('protect_guard_settings') or ide_config.get('block_file_bypass'):
+        enforcement_parts = []
+        if ide_config.get('protect_guard_settings'):
+            enforcement_parts.append("[green]Guard settings protected[/green]")
+        if ide_config.get('block_file_bypass'):
+            enforcement_parts.append("[green]File bypass blocked[/green]")
+        elif ide_config.get('protect_guard_settings'):
+            enforcement_parts.append("[dim]File bypass not blocked[/dim]")
+
+        table.add_row("Enforcement", ", ".join(enforcement_parts))
+
+    # Modules summary
+    selected_modules = results.get('selected_modules', [])
+    modules_text = ', '.join(selected_modules)
+    table.add_row("Modules", f"{len(selected_modules)} selected\n{modules_text}")
+
+    console.print(table)
+    console.print()
+
+    # Final validation message
+    if results.get('instructions_valid') and results.get('tests_valid', True):
+        console.print("[bold green]✓ All validations passed![/bold green]")
+    else:
+        console.print("[bold yellow]⚠ Some validations failed - please review the generated files[/bold yellow]")
+    console.print()
+
 # ============================================================================
 # Phase 1: Project Discovery & Detection Functions
 # ============================================================================
@@ -1464,10 +1574,7 @@ def main():
     # Check line count and warn if over 300 lines
     instruction_lines = instructions.count('\n') + 1
     if instruction_lines > 300:
-        print()
-        print(f"WARNING: Generated instructions are {instruction_lines} lines (exceeds 300-line limit)")
-        print("         Quality may degrade with instructions over 300 lines.")
-        print()
+        show_line_count_warning(instruction_lines, threshold=300)
 
     # Write output files (keep local to TDD-guard-test)
     output_dir = Path(__file__).parent
