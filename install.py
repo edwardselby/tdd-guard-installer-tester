@@ -200,6 +200,57 @@ def select_from_exclusive_group_interactive(group_name: str, modules: List['Modu
 
     return result
 
+def select_standalone_modules_interactive(modules: List['ModuleInfo']) -> List['ModuleInfo']:
+    """Select multiple standalone modules using interactive checkboxes
+
+    Uses InquirerPy checkbox for multi-select with space bar to toggle.
+    """
+    from InquirerPy import inquirer
+    from InquirerPy.base.control import Choice
+
+    console = get_console()
+
+    # Build choices with module info
+    choices = []
+    defaults = []
+
+    for module in modules:
+        is_default = module.default_enabled
+
+        # Format choice name with module details
+        choice_name = f"{module.display_name}\n  {module.description} (+{module.line_count} lines)"
+
+        choices.append(Choice(
+            value=module,
+            name=choice_name,
+            enabled=is_default
+        ))
+
+        if is_default:
+            defaults.append(module)
+
+    # Show interactive checkbox
+    selected = inquirer.checkbox(
+        message="Select standalone modules (space to toggle, enter to confirm):",
+        choices=choices,
+        default=defaults,
+        pointer="❯",
+        style={
+            "pointer": "cyan bold",
+            "highlighted": "cyan bold",
+            "answer": "green bold"
+        }
+    ).execute()
+
+    # Show confirmation
+    if selected:
+        console.print(f"[green]✓[/green] Selected {len(selected)} module(s): [cyan]{', '.join(m.display_name for m in selected)}[/cyan]")
+    else:
+        console.print("[yellow]⚠[/yellow] No modules selected")
+    console.print()
+
+    return selected
+
 def print_step_header(title: str, step: int, total: int):
     """Print a Rich Panel showing step progress"""
     from rich.panel import Panel
@@ -425,7 +476,16 @@ def select_from_exclusive_group(group_name: str, modules: List['ModuleInfo']) ->
     return selected_module
 
 def select_standalone_modules(modules: List['ModuleInfo']) -> List['ModuleInfo']:
-    """Select multiple standalone modules using Rich UI (checkbox style)"""
+    """Select multiple standalone modules with interactive checkboxes or fallback
+
+    Uses InquirerPy checkbox for multi-select in interactive terminals.
+    Falls back to Rich Confirm prompts for CI/CD environments.
+    """
+    # Use interactive checkbox if terminal supports it
+    if is_interactive_terminal():
+        return select_standalone_modules_interactive(modules)
+
+    # Fallback to Rich Confirm prompts for non-interactive terminals
     from rich.table import Table
     from rich.panel import Panel
     from rich.prompt import Confirm

@@ -303,3 +303,19 @@ def test_select_from_exclusive_group_interactive_calls_inquirer():
         result = select_from_exclusive_group_interactive("core-tdd", modules)
 
         assert result == modules[0]
+
+
+def test_select_standalone_modules_interactive_calls_checkbox():
+    """Test that standalone module selection uses InquirerPy checkbox for multi-select"""
+    from install import select_standalone_modules_interactive, ModuleInfo
+    from pathlib import Path
+
+    modules = [ModuleInfo("pytest", Path("/fake"), silent=True)]
+
+    mock_checkbox = MagicMock()
+    mock_checkbox.execute.return_value = [modules[0]]
+
+    with patch('InquirerPy.inquirer.checkbox', return_value=mock_checkbox):
+        result = select_standalone_modules_interactive(modules)
+
+        assert result == [modules[0]]
