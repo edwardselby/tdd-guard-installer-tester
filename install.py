@@ -1622,12 +1622,7 @@ def main():
     else:
         ide_results['enforcement'] = False
 
-    # Validate generated files and report results
-    print()
-    print("Generation Complete:")
-    print("-" * 20)
-
-    # Validate instructions file
+    # Validate generated files (silently - Rich UI will display results)
     instructions_valid = validate_generated_file(
         instructions_file,
         estimated_lines,
@@ -1636,74 +1631,31 @@ def main():
 
     # Validate tests file if generated
     tests_valid = True
+    test_lines = 0
     if generate_tests:
-        # For tests, we don't have a good estimate, so we do a basic existence check
         tests_file = generated_dir / 'tests.md'
         test_lines = tests.count('\n') + 1
-        if tests_file.exists():
-            print(f"VALIDATION PASSED: tests file ({test_lines} lines)")
-        else:
-            print(f"VALIDATION FAILED: tests file not found")
-            tests_valid = False
+        tests_valid = tests_file.exists()
 
-    print()
-    print(f"Instructions: {instructions_file} ({instruction_lines} lines)")
-    if generate_tests:
-        test_lines = tests.count('\n') + 1
-        print(f"Tests: {generated_dir / 'tests.md'} ({test_lines} lines)")
-
-    # Claude IDE Integration Results
-    if ide_config['model_id']:
-        model_status = "Updated in Claude IDE" if ide_results.get('model') else "Failed to update"
-        print(f"Model: {ide_config['model_id']} → {model_status}")
-
-    if ide_config['enable_hooks']:
-        hooks_status = "Enabled in Claude IDE settings" if ide_results.get('hooks') else "Failed to enable"
-        print(f"Hooks: {hooks_status}")
-
-    if ide_config['copy_instructions']:
-        instructions_status = "Copied to Claude IDE custom instructions" if ide_results.get('instructions') else "Failed to copy"
-        print(f"Instructions: {instructions_status}")
-
-    if ide_config['configure_ignore_patterns']:
-        patterns_status = "Configured in Claude IDE" if ide_results.get('ignore_patterns') else "Failed to configure"
-        # Count removed patterns
-        removed_patterns = set()
+    # Gather removed ignore patterns for display
+    removed_patterns = set()
+    if ide_config.get('configure_ignore_patterns'):
         for module in selected_module_objects:
             removed_patterns.update(module.remove_from_ignore)
-        if removed_patterns:
-            removed_list = ', '.join(sorted(removed_patterns))
-            print(f"Ignore patterns: Removed {removed_list} (TDD Guard will now validate these files)")
-        else:
-            print(f"Ignore patterns: {patterns_status}")
 
-    # Pytest Auto-Approval Results
-    if ide_config['auto_approve_pytest']:
-        auto_approve_status = "Enabled for pytest commands" if ide_results.get('auto_approve_pytest') else "Failed to enable"
-        print(f"Auto-approve pytest: {auto_approve_status}")
-
-    # Enforcement Configuration Results
-    if ide_config['protect_guard_settings'] or ide_config['block_file_bypass']:
-        enforcement_status = "Configured in Claude IDE" if ide_results.get('enforcement') else "Failed to configure"
-        enforcement_details = []
-        if ide_config['protect_guard_settings']:
-            enforcement_details.append("Guard settings protected")
-        if ide_config['block_file_bypass']:
-            enforcement_details.append("File bypass blocked")
-        if not ide_config['block_file_bypass'] and ide_config['protect_guard_settings']:
-            enforcement_details.append("File bypass not blocked")
-
-        enforcement_summary = ', '.join(enforcement_details)
-        print(f"Enforcement: {enforcement_summary}")
-
-    print(f"Modules included: {', '.join(selected_modules)}")
-    print(f"Total modules: {len(selected_modules)}")
-
-    # Final validation summary
-    if instructions_valid and tests_valid:
-        print(f"All validations passed!")
-    else:
-        print(f"Some validations failed - please review the generated files")
+    # Display all results using Rich UI
+    show_generation_results({
+        'instructions_file': instructions_file,
+        'instruction_lines': instruction_lines,
+        'tests_file': generated_dir / 'tests.md' if generate_tests else None,
+        'test_lines': test_lines,
+        'instructions_valid': instructions_valid,
+        'tests_valid': tests_valid,
+        'selected_modules': selected_modules,
+        'ide_results': ide_results,
+        'ide_config': ide_config,
+        'removed_patterns': list(removed_patterns)
+    })
 
     # PHASE 5.2: Installation Summary (only for wizard mode with target)
     if target_path:
