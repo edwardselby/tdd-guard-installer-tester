@@ -96,6 +96,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ✓ Multi-line choice display with descriptions
 ✓ Pre-selected defaults for recommended options
 
+## [3.6.1] - 2025-10-10
+
+### Fixed
+- **Critical Bug: InquirerPy Style Parameter**
+  - Fixed `AttributeError: 'dict' object has no attribute 'dict'`
+  - Issue prevented all interactive navigation from working in v3.6.0
+  - InquirerPy expects Style object, not plain dict
+  - Removed style parameter from all interactive functions
+  - Interactive features now work correctly with TTY=True
+  - Functions fixed: `select_model_interactive()`, `select_from_exclusive_group_interactive()`, `select_standalone_modules_interactive()`
+
+### Added
+- **TTY Detection Status Indicator** (install.py:535-560)
+  - Visual panel showing TTY detection result at wizard entry
+  - Green ✓ "TTY Enabled: Using interactive arrow-key navigation"
+  - Yellow ⚠ "TTY Disabled: Using text-based input fallback"
+  - Shows `sys.stdin.isatty()` value for debugging
+  - Displayed immediately when running `python install.py`
+  - Helps users understand which UI mode is active
+
+- **Interactive Project Selection** (install.py:860-924)
+  - Arrow-key navigation through 30+ discovered projects
+  - Format: `Project Name | Type | Venv Status | TDD Guard Status`
+  - No more typing project numbers (1-31)
+  - "Custom Path" option at bottom of list
+  - Function: `select_project_interactive()`
+  - Integrated with TTY detection + fallback
+
+- **Interactive Wizard Mode Selection** (install.py:306-342)
+  - Arrow-key navigation for Express/Custom/Minimal modes
+  - No more typing 1/2/3
+  - Clean, modern interface
+  - Updated `select_wizard_mode()` with TTY detection
+  - Fallback to Rich prompt for non-TTY
+
+### Changed
+- **TTY Status Location**: Moved to top of main() before any prompts
+  - Previously shown after project selection
+  - Now shown immediately when wizard starts
+  - Better debugging experience
+
+### Impact
+- **v3.6.0 Now Fully Functional**: Bug fix enables all interactive features
+- **Complete Wizard Coverage**: Arrow-key navigation from start to finish
+- **Improved Debugging**: TTY status visible immediately
+
+### Test Results
+- All 40 tests passing ✅
+- No regressions
+- Interactive navigation working correctly
+- Fallbacks tested and working
+
+### User Experience
+Before v3.6.1 (v3.6.0 with bug):
+```
+? Select Claude AI model:
+AttributeError: 'dict' object has no attribute 'dict'
+```
+
+After v3.6.1:
+```
+╭──────────────────────────── TTY Detection Status ────────────────────────────╮
+│ ✓ TTY Enabled: Using interactive arrow-key navigation                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+? Select target project: (Use arrow keys)
+❯ project-name........... │ Type │ Venv │ Status
+
+? Select wizard mode: (Use arrow keys)
+❯ Express - Quick setup with recommended defaults
+
+? Select Claude AI model: (Use arrow keys)
+❯ Claude Sonnet 4.0 (Recommended, default)
+```
+
+Complete arrow-key navigation throughout entire wizard! 🎉
+
 ## [3.5.1] - 2025-10-10
 
 ### Added
