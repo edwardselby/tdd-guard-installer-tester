@@ -1,5 +1,5 @@
-name: "Core TDD (Flexible)"
-description: "Flexible TDD: 2-3 similar tests allowed for efficiency"
+name: "Core TDD (Flexible - Batch Mode)"
+description: "Flexible TDD: Up to 3 tests per batch (any functions/classes)"
 default: no
 priority: 4
 exclusive_group: "core-tdd"

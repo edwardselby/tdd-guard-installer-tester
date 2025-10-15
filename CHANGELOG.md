@@ -5,6 +5,89 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] - 2025-10-15
+
+### Changed
+- **Core-Flexible Module: True Batch-Based TDD**
+  - Renamed to "Core TDD (Flexible - Batch Mode)"
+  - Removed restriction requiring tests to be for the SAME function
+  - Now allows up to 3 tests per batch for ANY scenario:
+    - Multiple tests for the same function
+    - Tests for different functions in the same module
+    - Tests for different classes/methods
+    - Mix of unit tests across related functionality
+    - Any combination that makes logical sense for the feature
+  - Agent decides best grouping (1-3 tests) based on context
+  - Truly flexible batching instead of function-constrained batching
+
+### Fixed
+- **Core-Flexible Enforcement Issue**
+  - Previous version still enforced strict "same function" requirement
+  - Prevented flexible batching across different functions/classes
+  - Module now delivers on "flexible" promise
+
+### Impact
+
+**Before v3.7.1 (Too Strict):**
+```markdown
+❌ BLOCK: Tests for different functions/methods in single operation
+✅ ALLOW: 2-3 tests for the SAME function when testing:
+  - Boundary values
+  - Error conditions
+  - Type variations
+```
+
+**After v3.7.1 (Truly Flexible):**
+```markdown
+✅ ALLOW: Up to 3 tests per batch for ANY scenario:
+  - Multiple tests for the same function
+  - Tests for different functions in the same module
+  - Tests for different classes/methods
+  - Mix of unit tests across related functionality
+✅ ALLOW: Flexible batching - agent decides best grouping
+```
+
+### User Experience
+
+**Old Behavior (v3.7.0 and earlier):**
+```python
+# Agent could create 3 tests for validate_email()
+def test_validate_email_valid()
+def test_validate_email_invalid()
+def test_validate_email_empty()
+
+# But NOT tests across different functions ❌
+def test_validate_email_valid()
+def test_validate_password_valid()  # BLOCKED: Different function
+def test_sanitize_input_valid()     # BLOCKED: Different function
+```
+
+**New Behavior (v3.7.1):**
+```python
+# Agent can create logical batches across functions ✅
+def test_validate_email_valid()
+def test_validate_password_valid()
+def test_sanitize_input_valid()
+
+# Or tests for different classes ✅
+def test_user_model_create()
+def test_order_model_create()
+def test_product_model_create()
+
+# Agent decides best grouping based on context
+```
+
+### Technical Details
+- Updated `modules/core-flexible/instructions.md` (lines 7-17)
+- Updated `modules/core-flexible/metadata.yaml` (lines 1-2)
+- Description changed: "2-3 similar tests" → "Up to 3 tests per batch (any functions/classes)"
+- All 40 tests passing ✅
+
+### Configuration Files
+- **`.claude/tdd-guard/data/instructions.md`** will receive updated rules on reinstall
+- Express/Minimal modes: Automatic update to batch-based TDD
+- Custom mode: User prompted to update to batch-based rules
+
 ## [3.7.0] - 2025-10-15
 
 ### Added

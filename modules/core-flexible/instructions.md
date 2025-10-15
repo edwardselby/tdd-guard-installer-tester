@@ -1,19 +1,20 @@
-# Core TDD Workflow Enforcement (Flexible)
+# Core TDD Workflow Enforcement (Flexible - Batch Mode)
 
 ## Priority Level: 4 (TDD Workflow)
 
 ## 🔄 TDD WORKFLOW ENFORCEMENT
 
-### Test Creation Rules
+### Test Creation Rules (Batch-Based TDD)
 ❌ **BLOCK:** More than 3 test functions in single operation
-❌ **BLOCK:** Tests for different functions/methods in single operation
-❌ **BLOCK:** Tests mixing different behavioral concerns
 ❌ **BLOCK:** Tests that pass immediately (trivial assertions like `2 + 2 == 4`)
-✅ **ALLOW:** 2-3 tests for the SAME function when testing:
-  - Boundary values (min, max, edge cases)
-  - Error conditions (null, empty, invalid)
-  - Type variations (int, string, list)
-✅ **ALLOW:** One test at a time for exploratory/complex behaviors
+✅ **ALLOW:** Up to 3 tests per batch for ANY scenario:
+  - Multiple tests for the same function (boundary values, error conditions, type variations)
+  - Tests for different functions in the same module
+  - Tests for different classes/methods
+  - Mix of unit tests across related functionality
+  - Any combination that makes logical sense for the feature being developed
+✅ **ALLOW:** Flexible batching - agent decides best grouping (1-3 tests) based on context
+✅ **ALLOW:** Single test when appropriate for complex/exploratory behaviors
 
 ### Implementation Timing
 ❌ **BLOCK:** Implementation before failing test exists
