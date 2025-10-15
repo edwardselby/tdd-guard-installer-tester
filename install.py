@@ -1276,6 +1276,67 @@ def ask_yes_no(prompt: str, default: bool = True) -> bool:
     """Ask a yes/no question with a default using Rich Confirm"""
     return Confirm.ask(prompt, default=default)
 
+def has_tdd_guard_hooks(hooks_config: dict) -> bool:
+    """
+    Check if hooks configuration contains TDD Guard commands.
+
+    :param hooks_config: Hooks section from settings.local.json
+    :return: True if TDD Guard hooks detected
+    """
+    if not hooks_config:
+        return False
+
+    # Check all hook types for tdd-guard command
+    for hook_type in ['PreToolUse', 'UserPromptSubmit', 'SessionStart']:
+        if hook_type in hooks_config:
+            for hook_entry in hooks_config[hook_type]:
+                hooks_list = hook_entry.get('hooks', [])
+                for hook in hooks_list:
+                    if hook.get('command') == 'tdd-guard':
+                        return True
+    return False
+
+# Known TDD Guard deny patterns
+TDD_GUARD_DENY_PATTERNS = {
+    "Read(.claude/tdd-guard/**)",
+    "Bash(echo:*)",
+    "Bash(printf:*)",
+    "Bash(sed:*)",
+    "Bash(awk:*)",
+    "Bash(perl:*)"
+}
+
+def filter_tdd_guard_deny_patterns(deny_list: list) -> list:
+    """
+    Remove TDD Guard deny patterns from list.
+
+    :param deny_list: List of deny patterns
+    :return: List with TDD Guard patterns removed
+    """
+    return [p for p in deny_list if p not in TDD_GUARD_DENY_PATTERNS]
+
+def is_tdd_guard_pytest_pattern(pattern: str) -> bool:
+    """
+    Check if pattern is a TDD Guard pytest auto-approve pattern.
+
+    :param pattern: Permission pattern string
+    :return: True if pattern is TDD Guard pytest pattern
+    """
+    if not pattern.startswith('Bash('):
+        return False
+
+    pytest_keywords = ['pytest', 'FLASK_ENV=TESTING', 'FLASK_ENV=testing']
+    return any(keyword in pattern for keyword in pytest_keywords)
+
+def filter_tdd_guard_pytest_patterns(allow_list: list) -> list:
+    """
+    Remove TDD Guard pytest patterns from list.
+
+    :param allow_list: List of allow patterns
+    :return: List with TDD Guard pytest patterns removed
+    """
+    return [p for p in allow_list if not is_tdd_guard_pytest_pattern(p)]
+
 def safe_load_settings_json(settings_path: Path) -> dict:
     """
     Safely load settings.local.json with malformed JSON handling.
@@ -1336,8 +1397,15 @@ def update_model_setting(model_id: str, target_path: Path) -> bool:
         print(f"Warning: Failed to update model setting: {e}")
         return False
 
-def create_hooks(enabled: bool, target_path: Path) -> bool:
-    """Add TDD Guard hooks to .claude/settings.local.json"""
+def create_hooks(enabled: bool, target_path: Path, wizard_mode: str = 'custom') -> bool:
+    """
+    Add TDD Guard hooks to .claude/settings.local.json with mode-based replacement logic.
+
+    :param enabled: Whether to enable hooks
+    :param target_path: Path to target project
+    :param wizard_mode: Wizard mode ('express', 'minimal', 'custom')
+    :return: Success status
+    """
     if not enabled:
         return True
 
@@ -1350,7 +1418,7 @@ def create_hooks(enabled: bool, target_path: Path) -> bool:
         # Load existing settings with safe JSON handling
         settings = safe_load_settings_json(settings_path)
 
-        # Add hooks section
+        # TDD Guard hooks configuration
         hooks_config = {
             "PreToolUse": [
                 {
@@ -1371,7 +1439,33 @@ def create_hooks(enabled: bool, target_path: Path) -> bool:
             ]
         }
 
-        settings['hooks'] = hooks_config
+        # Check for existing hooks
+        existing_hooks = settings.get('hooks')
+        has_existing = existing_hooks is not None
+        has_tdd_guard = has_tdd_guard_hooks(existing_hooks) if has_existing else False
+
+        # Mode-based replacement logic
+        if wizard_mode in ['express', 'minimal']:
+            # Always replace in express/minimal mode
+            settings['hooks'] = hooks_config
+            if has_existing and not has_tdd_guard:
+                print("  ℹ️  Replaced existing hooks with TDD Guard configuration")
+        elif wizard_mode == 'custom':
+            # Prompt user in custom mode if existing hooks found
+            if has_existing and not has_tdd_guard:
+                print("\n⚠️  Existing hooks configuration detected.")
+                if ask_yes_no("Replace with TDD Guard hooks? (recommended)", True):
+                    settings['hooks'] = hooks_config
+                    print("  ✓ Replaced with TDD Guard hooks")
+                else:
+                    print("  ℹ️  Keeping existing hooks configuration")
+                    return True
+            else:
+                # No existing hooks or already has TDD Guard - replace
+                settings['hooks'] = hooks_config
+        else:
+            # Fallback for unknown mode - replace
+            settings['hooks'] = hooks_config
 
         # Write back to file
         with open(settings_path, 'w') as f:
@@ -1452,8 +1546,16 @@ def configure_ignore_patterns(enabled: bool, selected_modules: List[ModuleInfo],
         print(f"Warning: Failed to configure ignore patterns: {e}")
         return False
 
-def configure_enforcement(protect_settings: bool, block_bypass: bool, target_path: Path) -> bool:
-    """Configure TDD Guard enforcement in .claude/settings.local.json"""
+def configure_enforcement(protect_settings: bool, block_bypass: bool, target_path: Path, wizard_mode: str = 'custom') -> bool:
+    """
+    Configure TDD Guard enforcement in .claude/settings.local.json with mode-based replacement logic.
+
+    :param protect_settings: Whether to protect TDD Guard settings
+    :param block_bypass: Whether to block file bypass commands
+    :param target_path: Path to target project
+    :param wizard_mode: Wizard mode ('express', 'minimal', 'custom')
+    :return: Success status
+    """
     if not protect_settings and not block_bypass:
         return True
 
@@ -1472,6 +1574,7 @@ def configure_enforcement(protect_settings: bool, block_bypass: bool, target_pat
         if 'deny' not in settings['permissions']:
             settings['permissions']['deny'] = []
 
+        # Build TDD Guard deny patterns based on options
         deny_patterns = []
 
         if protect_settings:
@@ -1486,10 +1589,38 @@ def configure_enforcement(protect_settings: bool, block_bypass: bool, target_pat
                 "Bash(perl:*)"
             ])
 
-        # Merge with existing deny patterns (avoid duplicates)
-        existing_deny = set(settings['permissions']['deny'])
-        all_deny = list(existing_deny.union(set(deny_patterns)))
-        settings['permissions']['deny'] = all_deny
+        # Get existing deny patterns
+        existing_deny = settings['permissions']['deny']
+        has_tdd_guard_patterns = any(p in existing_deny for p in TDD_GUARD_DENY_PATTERNS)
+
+        # Mode-based replacement logic
+        if wizard_mode in ['express', 'minimal']:
+            # Always replace: Remove old TDD Guard patterns, add new ones
+            clean_deny = filter_tdd_guard_deny_patterns(existing_deny)
+            settings['permissions']['deny'] = clean_deny + deny_patterns
+            if has_tdd_guard_patterns:
+                print("  ℹ️  Updated TDD Guard enforcement patterns")
+        elif wizard_mode == 'custom':
+            # Prompt user if TDD Guard patterns found
+            if has_tdd_guard_patterns:
+                print("\n⚠️  Existing TDD Guard enforcement patterns detected.")
+                if ask_yes_no("Replace with current enforcement rules? (recommended)", True):
+                    clean_deny = filter_tdd_guard_deny_patterns(existing_deny)
+                    settings['permissions']['deny'] = clean_deny + deny_patterns
+                    print("  ✓ Replaced TDD Guard enforcement patterns")
+                else:
+                    # Merge: Add new patterns without removing old ones
+                    all_deny = list(set(existing_deny).union(set(deny_patterns)))
+                    settings['permissions']['deny'] = all_deny
+                    print("  ℹ️  Merged new patterns with existing")
+            else:
+                # No TDD Guard patterns - just add new ones
+                all_deny = list(set(existing_deny).union(set(deny_patterns)))
+                settings['permissions']['deny'] = all_deny
+        else:
+            # Fallback for unknown mode - merge
+            all_deny = list(set(existing_deny).union(set(deny_patterns)))
+            settings['permissions']['deny'] = all_deny
 
         # Write back to file
         with open(settings_path, 'w') as f:
@@ -1501,8 +1632,15 @@ def configure_enforcement(protect_settings: bool, block_bypass: bool, target_pat
         print(f"Warning: Failed to configure enforcement: {e}")
         return False
 
-def configure_auto_approve_pytest(enabled: bool, target_path: Path) -> bool:
-    """Add pytest patterns to permissions.allow in .claude/settings.local.json"""
+def configure_auto_approve_pytest(enabled: bool, target_path: Path, wizard_mode: str = 'custom') -> bool:
+    """
+    Add pytest patterns to permissions.allow in .claude/settings.local.json with mode-based replacement logic.
+
+    :param enabled: Whether to enable pytest auto-approval
+    :param target_path: Path to target project
+    :param wizard_mode: Wizard mode ('express', 'minimal', 'custom')
+    :return: Success status
+    """
     if not enabled:
         return True
 
@@ -1521,7 +1659,7 @@ def configure_auto_approve_pytest(enabled: bool, target_path: Path) -> bool:
         if 'allow' not in settings['permissions']:
             settings['permissions']['allow'] = []
 
-        # Add pytest patterns if not already present
+        # Current pytest patterns (v3.6.3)
         # Cover all common pytest command formats:
         # - pytest, python -m pytest, poetry run pytest
         # - FLASK_ENV=TESTING, FLASK_ENV=testing (case variations)
@@ -1547,9 +1685,38 @@ def configure_auto_approve_pytest(enabled: bool, target_path: Path) -> bool:
             "Bash(FLASK_ENV=testing poetry run pytest:*)"
         ]
 
-        for pattern in pytest_patterns:
-            if pattern not in settings['permissions']['allow']:
-                settings['permissions']['allow'].append(pattern)
+        # Get existing allow patterns
+        existing_allow = settings['permissions']['allow']
+        has_pytest_patterns = any(is_tdd_guard_pytest_pattern(p) for p in existing_allow)
+
+        # Mode-based replacement logic
+        if wizard_mode in ['express', 'minimal']:
+            # Always replace: Remove old pytest patterns, add current 13
+            clean_allow = filter_tdd_guard_pytest_patterns(existing_allow)
+            settings['permissions']['allow'] = clean_allow + pytest_patterns
+            if has_pytest_patterns:
+                print("  ℹ️  Updated pytest auto-approve patterns (13 patterns)")
+        elif wizard_mode == 'custom':
+            # Prompt user if pytest patterns found
+            if has_pytest_patterns:
+                print("\n⚠️  Existing pytest auto-approve patterns detected.")
+                print(f"   Current: {sum(1 for p in existing_allow if is_tdd_guard_pytest_pattern(p))} pattern(s)")
+                print(f"   Latest:  {len(pytest_patterns)} comprehensive patterns")
+                if ask_yes_no("Replace with latest pytest patterns? (recommended)", True):
+                    clean_allow = filter_tdd_guard_pytest_patterns(existing_allow)
+                    settings['permissions']['allow'] = clean_allow + pytest_patterns
+                    print("  ✓ Replaced with 13 comprehensive pytest patterns")
+                else:
+                    print("  ℹ️  Keeping existing pytest patterns")
+                    return True
+            else:
+                # No pytest patterns - add all new ones
+                settings['permissions']['allow'] = existing_allow + pytest_patterns
+        else:
+            # Fallback for unknown mode - add if not present
+            for pattern in pytest_patterns:
+                if pattern not in settings['permissions']['allow']:
+                    settings['permissions']['allow'].append(pattern)
 
         # Write back to file
         with open(settings_path, 'w') as f:
@@ -1600,8 +1767,12 @@ def validate_generated_file(file_path: Path, estimated_lines: int, file_type: st
         console.print(f"[red]✗ VALIDATION ERROR:[/red] Could not validate {file_type} file: {e}")
         return False
 
-def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mode: Optional[str] = None) -> Tuple[List[str], bool, int, Dict]:
-    """Run the interactive module selection wizard with Claude IDE integration"""
+def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mode: Optional[str] = None) -> Tuple[List[str], bool, int, Dict, str]:
+    """
+    Run the interactive module selection wizard with Claude IDE integration.
+
+    :return: Tuple of (selected_modules, generate_tests, estimated_lines, ide_config, wizard_mode)
+    """
     from rich.panel import Panel
 
     console = get_console()
@@ -1632,7 +1803,8 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
             estimated_lines = sum(m.line_count for m in modules if m.name in selected_module_names)
             console.print("[green]✓ Configuration loaded[/green]")
             console.print()
-            return selected_module_names, generate_tests, estimated_lines, loaded_ide_config
+            # Use 'custom' mode for loaded config (most conservative)
+            return selected_module_names, generate_tests, estimated_lines, loaded_ide_config, 'custom'
 
     # If mode not specified, prompt user to select
     if mode is None:
@@ -1648,7 +1820,7 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
         estimated_lines = sum(m.line_count for m in modules if m.name in config['selected_modules'])
         console.print(f"[green]✓[/green] Selected {len(config['selected_modules'])} modules with recommended settings")
         console.print()
-        return config['selected_modules'], config['generate_tests'], estimated_lines, config['ide_config']
+        return config['selected_modules'], config['generate_tests'], estimated_lines, config['ide_config'], 'express'
 
     # Handle minimal mode
     if mode == 'minimal':
@@ -1671,7 +1843,7 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
         estimated_lines = sum(m.line_count for m in modules if m.name in selected_modules)
         console.print(f"[green]✓[/green] Configured with core TDD module only")
         console.print()
-        return selected_modules, True, estimated_lines, ide_config
+        return selected_modules, True, estimated_lines, ide_config, 'minimal'
 
     # Custom mode - full wizard with Rich UI
     console.print("[cyan]Custom mode:[/cyan] Full control over all settings")
@@ -1767,7 +1939,7 @@ def run_wizard(modules: List[ModuleInfo], project_type: Optional[str] = None, mo
     # Ask about test generation
     generate_tests = ask_yes_no("Generate test scenarios?", True)
 
-    return selected_modules, generate_tests, total_lines, ide_config
+    return selected_modules, generate_tests, total_lines, ide_config, 'custom'
 
 def load_module_content(module_name: str) -> Tuple[str, str]:
     """Load instruction and test content for a module."""
@@ -1917,6 +2089,7 @@ def main():
 
     # Determine module selection method
     estimated_lines = 0
+    wizard_mode = 'custom'  # Default for CLI modes
     ide_config = {
         'model_id': None,
         'enable_hooks': False,
@@ -1930,6 +2103,7 @@ def main():
         selected_modules = [m.name for m in available_modules]
         generate_tests = True
         estimated_lines = sum(m.line_count for m in available_modules)
+        wizard_mode = 'custom'  # CLI mode uses custom (most conservative)
     elif args.modules:
         selected_modules = args.modules
         generate_tests = True
@@ -1942,9 +2116,10 @@ def main():
             sys.exit(1)
         # Calculate estimated lines for CLI selection
         estimated_lines = sum(m.line_count for m in available_modules if m.name in selected_modules)
+        wizard_mode = 'custom'  # CLI mode uses custom (most conservative)
     else:
         # Run wizard (default behavior)
-        selected_modules, generate_tests, estimated_lines, ide_config = run_wizard(available_modules, project_type)
+        selected_modules, generate_tests, estimated_lines, ide_config, wizard_mode = run_wizard(available_modules, project_type)
 
     # Generate combined content
     instructions, tests = generate_combined_instructions(selected_modules)
@@ -1981,7 +2156,7 @@ def main():
         if ide_config['model_id']:
             ide_results['model'] = update_model_setting(ide_config['model_id'], target_path)
 
-        ide_results['hooks'] = create_hooks(ide_config['enable_hooks'], target_path)
+        ide_results['hooks'] = create_hooks(ide_config['enable_hooks'], target_path, wizard_mode)
         ide_results['instructions'] = copy_instructions_to_ide(ide_config['copy_instructions'], instructions, target_path)
 
         # Get selected module objects for ignore patterns
@@ -1989,14 +2164,14 @@ def main():
         ide_results['ignore_patterns'] = configure_ignore_patterns(ide_config['configure_ignore_patterns'], selected_module_objects, target_path)
 
         # Configure pytest auto-approval
-        ide_results['auto_approve_pytest'] = configure_auto_approve_pytest(ide_config['auto_approve_pytest'], target_path)
+        ide_results['auto_approve_pytest'] = configure_auto_approve_pytest(ide_config['auto_approve_pytest'], target_path, wizard_mode)
     else:
         # CLI mode without target_path - skip IDE integration
         ide_results = {'model': False, 'hooks': False, 'instructions': False, 'ignore_patterns': False, 'auto_approve_pytest': False}
 
     # Enforcement Configuration (only if target_path is set)
     if target_path:
-        ide_results['enforcement'] = configure_enforcement(ide_config['protect_guard_settings'], ide_config['block_file_bypass'], target_path)
+        ide_results['enforcement'] = configure_enforcement(ide_config['protect_guard_settings'], ide_config['block_file_bypass'], target_path, wizard_mode)
     else:
         ide_results['enforcement'] = False
 

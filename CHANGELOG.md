@@ -5,6 +5,115 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2025-10-15
+
+### Added
+- **Mode-Based Configuration Replacement** - Smart update/replace logic based on wizard mode
+  - Express/Minimal modes: Automatically replace old TDD Guard configurations with latest
+  - Custom mode: Prompt user to replace or keep existing configurations
+  - Prevents accumulation of outdated patterns across reinstalls
+
+- **TDD Guard Pattern Detection** (install.py:1279-1338)
+  - `has_tdd_guard_hooks()` - Detects TDD Guard hook configurations
+  - `filter_tdd_guard_deny_patterns()` - Removes TDD Guard enforcement patterns
+  - `is_tdd_guard_pytest_pattern()` - Identifies pytest auto-approve patterns
+  - `filter_tdd_guard_pytest_patterns()` - Removes pytest patterns for clean replacement
+  - `TDD_GUARD_DENY_PATTERNS` - Constant set of known enforcement patterns
+
+### Changed
+- **`create_hooks()`** - Now accepts `wizard_mode` parameter (install.py:1400-1480)
+  - Express/Minimal: Always replace with TDD Guard hooks
+  - Custom: Prompt user if non-TDD Guard hooks found
+  - Displays informative messages during replacement
+
+- **`configure_enforcement()`** - Now accepts `wizard_mode` parameter (install.py:1549-1633)
+  - Express/Minimal: Remove old TDD Guard patterns, add current
+  - Custom: Prompt to replace or merge with existing patterns
+  - Shows pattern count during replacement
+
+- **`configure_auto_approve_pytest()`** - Now accepts `wizard_mode` parameter (install.py:1635-1730)
+  - Express/Minimal: Remove old pytest patterns, add current 13
+  - Custom: Prompt with pattern count comparison (old vs new)
+  - Clean replacement prevents duplicate patterns
+
+- **`run_wizard()`** - Now returns wizard_mode as 5th value (install.py:1770)
+  - Return type: `Tuple[List[str], bool, int, Dict, str]`
+  - Returns 'express', 'minimal', or 'custom' based on user selection
+  - Loaded config uses 'custom' mode (most conservative)
+
+- **`main()`** - Threads wizard_mode through to all config functions (install.py:2092-2174)
+  - Unpacks 5 values from run_wizard()
+  - CLI modes (--all, --modules) default to 'custom' mode
+  - Passes wizard_mode to create_hooks(), configure_enforcement(), configure_auto_approve_pytest()
+
+### Impact
+
+**Before v3.7.0:**
+```bash
+# Reinstalling TDD Guard accumulated old patterns
+Allow patterns before: 3 old pytest patterns
+Allow patterns after: 16 patterns (3 old + 13 new = duplicates/obsolete)
+```
+
+**After v3.7.0 (Express/Minimal mode):**
+```bash
+# Reinstalling automatically cleans and updates
+Allow patterns before: 3 old pytest patterns
+Allow patterns after: 13 current patterns (old removed, new added)
+ℹ️  Updated pytest auto-approve patterns (13 patterns)
+```
+
+**After v3.7.0 (Custom mode):**
+```bash
+# User gets control over replacement
+⚠️  Existing pytest auto-approve patterns detected.
+   Current: 3 pattern(s)
+   Latest:  13 comprehensive patterns
+Replace with latest pytest patterns? (recommended) [Y/n]: Y
+✓ Replaced with 13 comprehensive pytest patterns
+```
+
+### User Experience Improvements
+
+**Express Mode:**
+- Silent clean replacement - always up-to-date
+- No prompts, no duplicates, no manual cleanup
+- Perfect for quick updates
+
+**Minimal Mode:**
+- Same clean replacement as Express
+- Minimal configuration, maximum freshness
+
+**Custom Mode:**
+- Full control with informed decisions
+- Shows pattern counts (old vs new)
+- Explains what will happen before replacing
+- Option to keep existing or replace
+
+**CLI Mode (--all, --modules):**
+- Uses 'custom' mode (most conservative)
+- Avoids surprising users with auto-replacement
+
+### Technical Details
+- Helper functions use set operations for pattern detection
+- Backup existing patterns before replacement (if user chooses merge)
+- Mode passed through entire call chain (wizard → main → config functions)
+- All 40 tests passing ✅
+- Zero breaking changes - default parameter values maintain backward compatibility
+
+### Configuration Files Affected
+1. **`.claude/settings.local.json`** - `hooks` section
+   - Detects `tdd-guard` command in hook configurations
+   - Prompts only if non-TDD Guard hooks present
+
+2. **`.claude/settings.local.json`** - `permissions.deny`
+   - Tracks 6 known TDD Guard enforcement patterns
+   - Clean removal and re-addition in express/minimal
+
+3. **`.claude/settings.local.json`** - `permissions.allow`
+   - Tracks pytest patterns (any containing 'pytest', 'FLASK_ENV')
+   - Shows before/after count in custom mode prompts
+
 ## [3.6.3] - 2025-10-15
 
 ### Fixed
