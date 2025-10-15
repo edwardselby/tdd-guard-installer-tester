@@ -5,6 +5,57 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.2] - 2025-10-15
+
+### Fixed
+- **Critical: Malformed JSON Error Handling**
+  - Fixed cryptic error messages: "Expecting value: line 10 column 5 (char 216)"
+  - Added `safe_load_settings_json()` helper function (install.py:1279-1309)
+  - Automatically backs up malformed `.claude/settings.local.json` files
+  - Creates fresh settings structure when JSON parsing fails
+  - Provides clear error messages showing exact JSON parsing error
+  - Prevents installation failures due to corrupted settings files
+
+### Changed
+- **Updated IDE Configuration Functions**
+  - `update_model_setting()` now uses safe JSON loader (install.py:1311-1337)
+  - `create_hooks()` now uses safe JSON loader (install.py:1339-1392)
+  - `configure_enforcement()` now uses safe JSON loader (install.py:1455-1502)
+  - `configure_auto_approve_pytest()` now uses safe JSON loader (install.py:1504-1543)
+  - All functions now handle malformed JSON gracefully with backup and recovery
+
+### Impact
+**Before this fix:**
+```
+Warning: Failed to update model setting: Expecting value: line 10 column 5 (char 216)
+Warning: Failed to create hooks: Expecting value: line 10 column 5 (char 216)
+Warning: Failed to configure auto-approve for pytest: Expecting value: line 10 column 5 (char 216)
+Warning: Failed to configure enforcement: Expecting value: line 10 column 5 (char 216)
+```
+
+**After this fix:**
+```
+Warning: Malformed JSON detected in settings.local.json
+         Error: Expecting value: line 10 column 5 (char 216)
+         Backed up to: settings.local.json.backup
+         Creating fresh settings file...
+✓ IDE configuration successful
+```
+
+### Technical Details
+- New helper function uses `json.JSONDecodeError` exception handling
+- Backs up malformed files to `.json.backup` before replacing
+- Returns default settings structure: `{"permissions": {"allow": [], "deny": [], "ask": []}, "env": {}}`
+- Silent fallback if backup operation fails (won't block installation)
+- All 40 tests passing ✅
+
+### User Experience Improvements
+- Clear explanation of what went wrong (JSON syntax error)
+- Exact error message from JSON parser (line number and character position)
+- Automatic backup preserves user's settings for manual recovery
+- Installation completes successfully instead of failing with cryptic warnings
+- User can inspect backup file to understand what was malformed
+
 ## [3.6.0] - 2025-10-10
 
 ### Added

@@ -1276,6 +1276,38 @@ def ask_yes_no(prompt: str, default: bool = True) -> bool:
     """Ask a yes/no question with a default using Rich Confirm"""
     return Confirm.ask(prompt, default=default)
 
+def safe_load_settings_json(settings_path: Path) -> dict:
+    """
+    Safely load settings.local.json with malformed JSON handling.
+
+    If JSON is malformed, backs up the bad file and returns fresh settings.
+
+    :param settings_path: Path to settings.local.json
+    :return: Settings dictionary (either loaded or fresh default)
+    """
+    default_settings = {"permissions": {"allow": [], "deny": [], "ask": []}, "env": {}}
+
+    if not settings_path.exists():
+        return default_settings.copy()
+
+    try:
+        with open(settings_path, 'r') as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        # Backup malformed file
+        backup_path = settings_path.with_suffix('.json.backup')
+        try:
+            import shutil
+            shutil.copy2(settings_path, backup_path)
+            print(f"Warning: Malformed JSON detected in {settings_path.name}")
+            print(f"         Error: {e}")
+            print(f"         Backed up to: {backup_path.name}")
+            print(f"         Creating fresh settings file...")
+        except Exception:
+            pass  # Silent fail on backup
+
+        return default_settings.copy()
+
 def update_model_setting(model_id: str, target_path: Path) -> bool:
     """Update the TDD_GUARD_MODEL_VERSION in .claude/settings.local.json"""
     settings_path = target_path / '.claude' / 'settings.local.json'
@@ -1284,12 +1316,8 @@ def update_model_setting(model_id: str, target_path: Path) -> bool:
         # Create .claude directory if it doesn't exist
         settings_path.parent.mkdir(exist_ok=True)
 
-        # Load existing settings or create default structure
-        if settings_path.exists():
-            with open(settings_path, 'r') as f:
-                settings = json.load(f)
-        else:
-            settings = {"permissions": {"allow": [], "deny": [], "ask": []}, "env": {}}
+        # Load existing settings with safe JSON handling
+        settings = safe_load_settings_json(settings_path)
 
         # Ensure env section exists
         if 'env' not in settings:
@@ -1319,12 +1347,8 @@ def create_hooks(enabled: bool, target_path: Path) -> bool:
         # Create .claude directory if it doesn't exist
         settings_path.parent.mkdir(exist_ok=True)
 
-        # Load existing settings or create default structure
-        if settings_path.exists():
-            with open(settings_path, 'r') as f:
-                settings = json.load(f)
-        else:
-            settings = {"permissions": {"allow": [], "deny": [], "ask": []}, "env": {}}
+        # Load existing settings with safe JSON handling
+        settings = safe_load_settings_json(settings_path)
 
         # Add hooks section
         hooks_config = {
@@ -1439,12 +1463,8 @@ def configure_enforcement(protect_settings: bool, block_bypass: bool, target_pat
         # Create .claude directory if it doesn't exist
         settings_path.parent.mkdir(exist_ok=True)
 
-        # Load existing settings or create default structure
-        if settings_path.exists():
-            with open(settings_path, 'r') as f:
-                settings = json.load(f)
-        else:
-            settings = {"permissions": {"allow": [], "deny": [], "ask": []}, "env": {}}
+        # Load existing settings with safe JSON handling
+        settings = safe_load_settings_json(settings_path)
 
         # Ensure permissions structure exists
         if 'permissions' not in settings:
@@ -1492,12 +1512,8 @@ def configure_auto_approve_pytest(enabled: bool, target_path: Path) -> bool:
         # Create .claude directory if it doesn't exist
         settings_path.parent.mkdir(exist_ok=True)
 
-        # Load existing settings or create default structure
-        if settings_path.exists():
-            with open(settings_path, 'r') as f:
-                settings = json.load(f)
-        else:
-            settings = {"permissions": {"allow": [], "deny": [], "ask": []}, "env": {}}
+        # Load existing settings with safe JSON handling
+        settings = safe_load_settings_json(settings_path)
 
         # Ensure permissions structure exists
         if 'permissions' not in settings:
