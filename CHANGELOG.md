@@ -5,6 +5,66 @@ All notable changes to the TDD Guard Multi-Project Installer project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.3] - 2025-10-15
+
+### Fixed
+- **Auto-Approve Pytest Pattern Coverage**
+  - Expanded pytest auto-approve patterns from 3 to 13 variations
+  - Now covers `python -m pytest` command format (was only matching `pytest`)
+  - Added support for lowercase `FLASK_ENV=testing` (was only uppercase `TESTING`)
+  - Added support for `python3 -m pytest` variations
+
+### Changed
+- **Enhanced Pytest Pattern Matching** (install.py:1524-1548)
+  - Direct pytest: `pytest`, `python -m pytest`, `python3 -m pytest`
+  - Poetry-managed: `poetry run pytest`
+  - Flask testing (uppercase): `FLASK_ENV=TESTING` with all pytest variations
+  - Flask testing (lowercase): `FLASK_ENV=testing` with all pytest variations
+  - Total: 13 comprehensive patterns covering all common use cases
+
+### Impact
+
+**Before this fix:**
+```bash
+# ❌ Requested permission (not auto-approved)
+FLASK_ENV=testing python -m pytest tests/test_module.py -xvs
+```
+
+**After this fix:**
+```bash
+# ✅ Auto-approved (no permission prompt)
+FLASK_ENV=testing python -m pytest tests/test_module.py -xvs
+```
+
+### Patterns Added
+**New patterns now auto-approved:**
+1. `Bash(python -m pytest:*)` - Python module invocation
+2. `Bash(python3 -m pytest:*)` - Python 3 explicit
+3. `Bash(FLASK_ENV=testing pytest:*)` - Lowercase Flask env
+4. `Bash(FLASK_ENV=testing python -m pytest:*)` - Lowercase + module
+5. `Bash(FLASK_ENV=testing python3 -m pytest:*)` - Lowercase + python3
+6. `Bash(FLASK_ENV=testing poetry run pytest:*)` - Lowercase + poetry
+7. `Bash(FLASK_ENV=TESTING python -m pytest:*)` - Uppercase + module
+8. `Bash(FLASK_ENV=TESTING python3 -m pytest:*)` - Uppercase + python3
+
+**Existing patterns (still supported):**
+- `Bash(pytest:*)`
+- `Bash(poetry run pytest:*)`
+- `Bash(FLASK_ENV=TESTING pytest:*)`
+- `Bash(FLASK_ENV=TESTING poetry run pytest:*)`
+
+### Technical Details
+- Patterns added in `configure_auto_approve_pytest()` function
+- Covers all common pytest invocation methods in Python projects
+- Case-insensitive FLASK_ENV support (testing vs TESTING)
+- All 40 tests passing ✅
+
+### User Experience
+- No more permission prompts for `python -m pytest` commands
+- Seamless testing workflow across different Python environments
+- Consistent behavior whether using `pytest` directly or via `python -m`
+- Flask projects work with both `testing` and `TESTING` environment variable values
+
 ## [3.6.2] - 2025-10-15
 
 ### Fixed

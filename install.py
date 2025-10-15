@@ -1522,10 +1522,29 @@ def configure_auto_approve_pytest(enabled: bool, target_path: Path) -> bool:
             settings['permissions']['allow'] = []
 
         # Add pytest patterns if not already present
+        # Cover all common pytest command formats:
+        # - pytest, python -m pytest, poetry run pytest
+        # - FLASK_ENV=TESTING, FLASK_ENV=testing (case variations)
         pytest_patterns = [
-            "Bash(FLASK_ENV=TESTING poetry run pytest:*)",
+            # Direct pytest commands
+            "Bash(pytest:*)",
+            "Bash(python -m pytest:*)",
+            "Bash(python3 -m pytest:*)",
+
+            # Poetry-managed pytest
             "Bash(poetry run pytest:*)",
-            "Bash(pytest:*)"
+
+            # Flask testing with uppercase TESTING
+            "Bash(FLASK_ENV=TESTING pytest:*)",
+            "Bash(FLASK_ENV=TESTING python -m pytest:*)",
+            "Bash(FLASK_ENV=TESTING python3 -m pytest:*)",
+            "Bash(FLASK_ENV=TESTING poetry run pytest:*)",
+
+            # Flask testing with lowercase testing
+            "Bash(FLASK_ENV=testing pytest:*)",
+            "Bash(FLASK_ENV=testing python -m pytest:*)",
+            "Bash(FLASK_ENV=testing python3 -m pytest:*)",
+            "Bash(FLASK_ENV=testing poetry run pytest:*)"
         ]
 
         for pattern in pytest_patterns:
